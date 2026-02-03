@@ -57,3 +57,5 @@ jobs:
             export FRONT_IMAGE_TAG=${{ steps.vars.outputs.FRONT_IMAGE_TAG }}
             chmod +x deploy_frontend.sh
             ./deploy_frontend.sh
+
+            
