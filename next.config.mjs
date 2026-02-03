@@ -3,6 +3,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  output: 'standalone',
   images: {
     // 이미지 최적화 활성화 (WebP, AVIF 자동 변환)
     formats: ['image/avif', 'image/webp'],
