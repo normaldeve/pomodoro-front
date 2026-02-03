@@ -51,4 +51,3 @@ export const themes: Record<string, ThemeConfig> = {
     shadow: "shadow-[0_18px_50px_rgba(15,23,42,0.18)]",
   },
 }
-
