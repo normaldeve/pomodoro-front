@@ -6,7 +6,9 @@
 import { showErrorNotification } from './system-notification'
 import { setServerStatus, isNetworkError } from './server-status'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
+// 프론트에서 Nginx를 통해 백엔드에 접근하므로, 상대 경로를 사용합니다.
+// 예: /api/... → Nginx → backend 컨테이너
+const API_BASE_URL = ''
 
 // 인증 관련 API
 export const API_ENDPOINTS = {
