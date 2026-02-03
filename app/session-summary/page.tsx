@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { CheckCircle2, Circle, Clock } from "lucide-react"
 import { Reflection } from "@/components/ui/reflection"
 import { getMyGoals, getRoomReflections, getTodayRoomFocusTime, StudyGoalResponse, ReflectionResponse } from "@/lib/api"
@@ -37,7 +37,7 @@ const colors = {
   shadow: "rgba(45, 74, 62, 0.35)",
 }
 
-export default function SessionSummaryPage() {
+function SessionSummaryPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoaded, setIsLoaded] = useState(false)
@@ -408,3 +408,12 @@ export default function SessionSummaryPage() {
     </div>
   )
 }
+
+export default function SessionSummaryPage() {
+  return (
+    <Suspense fallback={null}>
+      <SessionSummaryPageInner />
+    </Suspense>
+  )
+}
+

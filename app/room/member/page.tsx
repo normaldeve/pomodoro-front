@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { DoorClosed } from "lucide-react"
 import PomodoroTimer from "@/components/pomodoro-timer"
 import FlipTimer from "@/components/flip-timer"
@@ -36,7 +36,7 @@ const formatTime = (seconds: number): string => {
   return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
 }
 
-export default function MemberRoomPage() {
+function MemberRoomPageInner() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -873,3 +873,12 @@ export default function MemberRoomPage() {
     </div>
   )
 }
+
+export default function MemberRoomPage() {
+  return (
+    <Suspense fallback={null}>
+      <MemberRoomPageInner />
+    </Suspense>
+  )
+}
+

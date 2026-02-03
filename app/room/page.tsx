@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, Suspense } from "react"
 import { getStudyRoomMembers, RoomMemberRole, getStudyRoom } from "@/lib/api"
 import { StudyRoomWebSocket, EnterStudyRoomRequest } from "@/lib/websocket"
 import {
@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export default function RoomPage() {
+function RoomPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
@@ -375,3 +375,12 @@ export default function RoomPage() {
     </>
   )
 }
+
+export default function RoomPage() {
+  return (
+    <Suspense fallback={null}>
+      <RoomPageInner />
+    </Suspense>
+  )
+}
+
