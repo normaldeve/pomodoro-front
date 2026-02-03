@@ -4,13 +4,30 @@
 
 import { Client } from '@stomp/stompjs'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
-
-// HTTP/HTTPS를 WS/WSS로 변환
+// WebSocket URL 생성: 브라우저의 현재 프로토콜을 사용하여 ws:// 또는 wss:// 자동 선택
 const getWebSocketUrl = (): string => {
-  const url = new URL(API_BASE_URL)
-  const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${protocol}//${url.host}/ws`
+  // 브라우저 환경에서는 현재 페이지의 프로토콜 사용
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = window.location.host
+    return `${protocol}//${host}/ws`
+  }
+  
+  // 서버 사이드 렌더링 환경 (빌드 시)
+  // 환경 변수가 있으면 사용, 없으면 기본값
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
+  if (apiBaseUrl) {
+    try {
+      const url = new URL(apiBaseUrl)
+      const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+      return `${protocol}//${url.host}/ws`
+    } catch {
+      // URL 파싱 실패 시 기본값 반환
+    }
+  }
+  
+  // 기본값 (개발 환경)
+  return 'ws://localhost:8080/ws'
 }
 
 const WS_URL = getWebSocketUrl()
