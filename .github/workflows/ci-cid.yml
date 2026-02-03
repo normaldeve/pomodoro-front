@@ -52,10 +52,9 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ secrets.FRONTEND_SERVER_DIR }}
+            cd ~/app
             export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
             export FRONT_IMAGE_TAG=${{ steps.vars.outputs.FRONT_IMAGE_TAG }}
             chmod +x deploy_frontend.sh
             ./deploy_frontend.sh
 
-            
