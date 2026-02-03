@@ -4,9 +4,6 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-ARG NEXT_PUBLIC_API_BASE_URL
-ARG NEXT_PUBLIC_WS_BASE_URL
-
 COPY package.json pnpm-lock.yaml ./
 RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
