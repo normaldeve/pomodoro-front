@@ -1,0 +1,875 @@
+"use client"
+
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useState, useEffect, useRef } from "react"
+import { DoorClosed } from "lucide-react"
+import PomodoroTimer from "@/components/pomodoro-timer"
+import FlipTimer from "@/components/flip-timer"
+import { TimerType } from "@/lib/api"
+import LiquidChat from "@/components/liquid-chat"
+import { GoalsList } from "@/components/ui/goals-list"
+import { Reflection } from "@/components/ui/reflection"
+import { ReflectionDialog } from "@/components/ui/reflection-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { getStudyRoomMembers, StudyRoomMemberResponse, getStudyRoom, getMessages, RoomMemberRole, getRoomReflections, ReflectionResponse } from "@/lib/api"
+import { getStatusText, getStatusColor } from "@/lib/utils"
+import { ParticipantsList } from "@/components/ui/participants-list"
+import { parseMessageTimestamp } from "@/lib/utils"
+import { useStudyRoomWebSocket } from "@/hooks/use-study-room-websocket"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { isSoundEnabled, setSoundEnabled } from "@/lib/sound-notification"
+import { Volume2, VolumeX } from "lucide-react"
+
+// 초를 00:00 형식으로 변환하는 함수
+const formatTime = (seconds: number): string => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
+}
+
+export default function MemberRoomPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [isReflectionDialogOpen, setIsReflectionDialogOpen] = useState(false)
+  const [isExitDialogOpen, setIsExitDialogOpen] = useState(false)
+  const [isSessionFinishedDialogOpen, setIsSessionFinishedDialogOpen] = useState(false)
+  const [currentReflectionSessionId, setCurrentReflectionSessionId] = useState<number | null>(null)
+  const isNavigatingToSummary = useRef(false)
+  const hasShownFinishedDialog = useRef(false)
+  const [roomInfo, setRoomInfo] = useState<{
+    roomId: number
+    title: string
+    hashtags: string[]
+    focusMinutes: number
+    breakMinutes: number
+    totalSessions: number
+    currentSession: number
+    currentParticipants: number
+    maxParticipants: number
+    secret: boolean
+    hostId: number
+    status: string
+    timerType: string
+    createdAt: string
+  } | null>(null)
+  const [participants, setParticipants] = useState<StudyRoomMemberResponse[]>([])
+  const [isLoadingParticipants, setIsLoadingParticipants] = useState(false)
+  const [soundEnabled, setSoundEnabledState] = useState(true)
+
+  // WebSocket 연결
+  const { statusMessage, timerState, dialMinutes, sendChatMessage, chatMessages, newMember, exitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData } = useStudyRoomWebSocket(roomInfo?.roomId || null)
+  const [currentUser, setCurrentUser] = useState<{ id: number; nickname: string } | null>(null)
+  const [liquidChatMessages, setLiquidChatMessages] = useState<Array<{
+    id: number
+    text: string
+    sender: "user" | "system"
+    timestamp: Date
+    userName?: string
+  }>>([])
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false)
+  const [processedReflectionIds, setProcessedReflectionIds] = useState<Set<number>>(new Set())
+  const [initialReflections, setInitialReflections] = useState<Array<{
+    id: number
+    authorName: string
+    authorAvatar?: string
+    content: string
+    images?: string[]
+    timestamp: Date
+    focusScore?: number | null
+    sessionId?: number
+  }>>([])
+  const [currentLiveReflection, setCurrentLiveReflection] = useState<{
+    reflectionId: number
+    sessionId: number
+    userName: string
+    userProfileUrl: string | null
+    content: string
+    focusScore: number | null
+    imageUrl: string | null
+    createdAt: Date
+  } | null>(null)
+
+  // 소리 설정 로드
+  useEffect(() => {
+    setSoundEnabledState(isSoundEnabled())
+  }, [])
+
+  // 현재 사용자 정보 로드
+  useEffect(() => {
+    const userStr = localStorage.getItem("user")
+    if (userStr) {
+      try {
+        const userData = JSON.parse(userStr)
+        setCurrentUser({ id: userData.id, nickname: userData.nickname })
+      } catch (error) {
+        console.error("사용자 정보 파싱 실패:", error)
+      }
+    }
+  }, [])
+
+  // 방 입장 시 이전 메시지 조회
+  useEffect(() => {
+    const loadInitialMessages = async () => {
+      if (!roomInfo?.roomId || !currentUser) return
+
+      setIsLoadingMessages(true)
+      try {
+        const response = await getMessages(roomInfo.roomId)
+        // 백엔드 응답이 최신 메시지부터 오므로 뒤집어서 오래된 메시지부터 저장
+        const initialMessages = [...response.content].reverse().map((msg) => ({
+          id: msg.messageId,
+          text: msg.content,
+          sender: "user" as const,
+          timestamp: parseMessageTimestamp(msg),
+          userName: msg.senderNickname || msg.senderName || "사용자",
+        }))
+
+        // 오래된 메시지부터 저장 (시간순 정렬)
+        setLiquidChatMessages(initialMessages)
+        setHasMoreMessages(!response.last)
+        setIsInitialLoadComplete(true)
+      } catch (error) {
+        console.error("이전 메시지 조회 실패:", error)
+      } finally {
+        setIsLoadingMessages(false)
+      }
+    }
+
+    loadInitialMessages()
+  }, [roomInfo?.roomId, currentUser])
+
+  // WebSocket으로 받은 채팅 메시지를 LiquidChat 형식으로 변환하고 기존 메시지와 병합
+  useEffect(() => {
+    if (!currentUser) return
+
+    setLiquidChatMessages((prev) => {
+      const existingIds = new Set(prev.map((m) => m.id))
+      const newMessages = chatMessages
+        .filter((msg) => !existingIds.has(msg.messageId))
+        .map((msg) => ({
+          id: msg.messageId,
+          text: msg.content,
+          sender: "user" as const,
+          timestamp: parseMessageTimestamp(msg),
+          userName: msg.senderNickname || msg.senderName || "사용자",
+        }))
+
+      // 기존 메시지와 새 메시지를 시간순으로 정렬
+      const allMessages = [...prev, ...newMessages].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+      return allMessages
+    })
+  }, [chatMessages, currentUser])
+
+  // 이전 메시지 로드 (무한 스크롤)
+  const handleLoadMore = async (lastMessageId: number) => {
+    if (!roomInfo?.roomId || isLoadingMessages || !hasMoreMessages) return
+
+    setIsLoadingMessages(true)
+    try {
+      const response = await getMessages(roomInfo.roomId, lastMessageId)
+      // 백엔드 응답이 최신 메시지부터 오므로 뒤집어서 오래된 메시지부터 저장
+      const olderMessages = [...response.content].reverse().map((msg) => ({
+        id: msg.messageId,
+        text: msg.content,
+        sender: "user" as const,
+        timestamp: parseMessageTimestamp(msg),
+        userName: msg.senderNickname || msg.senderName || "사용자",
+      }))
+
+      setLiquidChatMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id))
+        const newMessages = olderMessages.filter((msg) => !existingIds.has(msg.id))
+        // 오래된 메시지를 앞에 추가 (이미 시간순으로 정렬되어 있으므로 sort 불필요)
+        // newMessages는 이미 오래된 것부터, prev도 오래된 것부터이므로 그대로 합치면 됨
+        return [...newMessages, ...prev]
+      })
+
+      setHasMoreMessages(!response.last)
+    } catch (error) {
+      console.error("이전 메시지 로드 실패:", error)
+    } finally {
+      setIsLoadingMessages(false)
+    }
+  }
+
+  // 페이지 로드 시 스크롤을 맨 위로 이동 및 방 정보 로드
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    
+    const loadRoomInfo = async () => {
+      // 직전에 새로고침을 통해 나가기를 선택한 경우 세션 요약 페이지로 이동
+      const navigateRoomId = sessionStorage.getItem("navigateToSessionSummaryRoomId")
+      if (navigateRoomId) {
+        sessionStorage.removeItem("navigateToSessionSummaryRoomId")
+        isNavigatingToSummary.current = true
+        const parsedRoomId = parseInt(navigateRoomId, 10)
+        if (!isNaN(parsedRoomId)) {
+          // 세션 요약 페이지 접근 허용용 랜덤 토큰 생성 및 저장
+          const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+          sessionStorage.setItem("sessionSummaryToken", token)
+          router.replace(`/session-summary?roomId=${parsedRoomId}&token=${encodeURIComponent(token)}`)
+          return
+        }
+      }
+
+      // URL 쿼리 파라미터에서 roomId 가져오기
+      const roomIdParam = searchParams.get("roomId")
+      if (roomIdParam) {
+        try {
+          const roomId = parseInt(roomIdParam, 10)
+          if (isNaN(roomId)) {
+            console.error("유효하지 않은 roomId:", roomIdParam)
+            router.replace("/")
+            return
+          }
+          
+          // API로 방 정보 조회
+          try {
+            const roomInfo = await getStudyRoom(roomId)
+            if (!roomInfo) {
+              // 방 정보가 없으면 홈으로 이동
+              router.replace("/")
+              return
+            }
+            setRoomInfo(roomInfo)
+          } catch (error) {
+            console.error("방 정보 조회 실패:", error)
+            // 방 정보를 가져오지 못하면 홈으로 이동
+            router.replace("/")
+          }
+        } catch (error) {
+          console.error("roomId 파싱 실패:", error)
+          router.replace("/")
+        }
+      } else {
+        console.warn("URL에 roomId 파라미터가 없습니다")
+        router.replace("/")
+      }
+    }
+
+    loadRoomInfo()
+  }, [searchParams])
+
+  // 참여자 목록 로드
+  useEffect(() => {
+    const loadParticipants = async () => {
+      if (!roomInfo?.roomId) return
+
+      setIsLoadingParticipants(true)
+      try {
+        const response = await getStudyRoomMembers(roomInfo.roomId)
+        setParticipants(response)
+      } catch (error) {
+        console.error("참여자 목록 로드 실패:", error)
+        setParticipants([])
+      } finally {
+        setIsLoadingParticipants(false)
+      }
+    }
+
+    loadParticipants()
+  }, [roomInfo?.roomId])
+
+  // 회고 목록 로드
+  useEffect(() => {
+    const loadReflections = async () => {
+      if (!roomInfo?.roomId) return
+
+      try {
+        const reflections = await getRoomReflections(roomInfo.roomId)
+        // ReflectionResponse를 Reflection 컴포넌트 형식으로 변환
+        const convertedReflections = reflections.map((reflection: ReflectionResponse) => ({
+          id: reflection.reflectionId,
+          authorName: reflection.nickname,
+          authorAvatar: reflection.userProfileUrl || undefined,
+          content: reflection.content,
+          images: reflection.imageUrl ? [reflection.imageUrl] : [],
+          timestamp: new Date(reflection.createdAt),
+          focusScore: reflection.focusScore,
+          sessionId: reflection.sessionId,
+        }))
+        // 최신 순으로 정렬
+        convertedReflections.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+        setInitialReflections(convertedReflections)
+        
+        // 이미 로드된 회고 ID들을 processedReflectionIds에 추가 (웹소켓 중복 방지)
+        setProcessedReflectionIds((prev) => {
+          const next = new Set(prev)
+          convertedReflections.forEach((reflection) => {
+            next.add(reflection.id)
+          })
+          return next
+        })
+      } catch (error) {
+        console.error("회고 목록 로드 실패:", error)
+        setInitialReflections([])
+      }
+    }
+
+    loadReflections()
+  }, [roomInfo?.roomId])
+
+  // WebSocket으로 받은 방 상태 업데이트
+  useEffect(() => {
+    if (!roomStatus) return
+
+    // 함수형 업데이트를 사용하여 최신 roomInfo 상태를 참조
+    setRoomInfo(prev => {
+      if (!prev) return null
+      // 상태가 실제로 변경되었을 때만 업데이트
+      if (prev.status !== roomStatus) {
+        return { ...prev, status: roomStatus }
+      }
+      // 변경사항이 없으면 기존 객체 반환
+      return prev
+    })
+  }, [roomStatus])
+
+  // WebSocket으로 받은 집중 시간 변경 업데이트
+  useEffect(() => {
+    if (focusTime === null || focusTime === undefined) return
+
+    // 함수형 업데이트를 사용하여 최신 roomInfo 상태를 참조하고 무한 루프 방지
+    setRoomInfo(prev => {
+      if (!prev) return null
+      // 집중 시간이 실제로 변경되었을 때만 업데이트
+      if (prev.focusMinutes !== focusTime) {
+        return { ...prev, focusMinutes: focusTime }
+      }
+      // 변경사항이 없으면 기존 객체 반환 (불필요한 리렌더링 방지)
+      return prev
+    })
+  }, [focusTime]) // roomInfo는 의존성 배열에서 제외 (무한 루프 방지)
+
+  // WebSocket으로 받은 방 상태 응답 업데이트 (status와 focusMinutes를 함께 받음)
+  useEffect(() => {
+    if (!roomState) return
+
+    // 함수형 업데이트를 사용하여 최신 roomInfo 상태를 참조하고 무한 루프 방지
+    setRoomInfo(prev => {
+      if (!prev) return null
+      // 집중 시간이 실제로 변경되었을 때만 업데이트
+      // 상태(status)는 /status 토픽과 finishSession 이벤트에서만 관리하여
+      // 타이머 상태 변경과의 충돌을 방지
+      if (prev.focusMinutes !== roomState.focusMinutes) {
+        return { ...prev, focusMinutes: roomState.focusMinutes }
+      }
+      // 변경사항이 없으면 기존 객체 반환 (불필요한 리렌더링 방지)
+      return prev
+    })
+  }, [roomState]) // roomInfo는 의존성 배열에서 제외 (무한 루프 방지)
+
+  // WebSocket으로 받은 세션 종료 업데이트
+  useEffect(() => {
+    if (!finishSession) return
+
+    // 함수형 업데이트를 사용하여 최신 roomInfo 상태를 참조하고 무한 루프 방지
+    setRoomInfo(prev => {
+      if (!prev) return null
+      // 상태가 실제로 변경되었을 때만 업데이트
+      if (prev.status !== finishSession) {
+        return { ...prev, status: finishSession }
+      }
+      // 변경사항이 없으면 기존 객체 반환 (불필요한 리렌더링 방지)
+      return prev
+    })
+  }, [finishSession]) // roomInfo는 의존성 배열에서 제외 (무한 루프 방지)
+
+  // 방 상태가 FINISHED로 변경되면 세션 종료 다이얼로그 표시
+  useEffect(() => {
+    if (roomInfo?.status === 'FINISHED' && !hasShownFinishedDialog.current) {
+      setIsSessionFinishedDialogOpen(true)
+      hasShownFinishedDialog.current = true
+    }
+  }, [roomInfo?.status])
+
+  // WebSocket으로 받은 새 참여자 정보를 참여자 목록에 추가
+  useEffect(() => {
+    if (!newMember) return
+
+    // 함수형 업데이트를 사용하여 최신 participants 상태를 참조
+    setParticipants(prev => {
+      // 이미 참여자 목록에 있는지 확인
+      const existingMember = prev.find(p => p.userId === newMember.userId)
+      if (existingMember) {
+        // 이미 있으면 업데이트 (변경사항이 있을 때만)
+        if (
+          existingMember.nickname !== newMember.nickname ||
+          existingMember.profileUrl !== newMember.profileUrl
+        ) {
+          return prev.map(p =>
+            p.userId === newMember.userId
+              ? { ...p, nickname: newMember.nickname, profileUrl: newMember.profileUrl }
+              : p
+          )
+        }
+        // 변경사항이 없으면 기존 배열 반환
+        return prev
+      } else {
+        // 없으면 추가 (role은 MEMBER로 설정, 나중에 API로 다시 조회하면 정확한 role을 받을 수 있음)
+        return [
+          ...prev,
+          {
+            userId: newMember.userId,
+            nickname: newMember.nickname,
+            profileUrl: newMember.profileUrl,
+            role: RoomMemberRole.MEMBER,
+          }
+        ]
+      }
+    })
+  }, [newMember])
+
+  // WebSocket으로 받은 참여자 퇴장 메시지를 처리하여 참여자 목록에서 제거
+  useEffect(() => {
+    if (!exitedMemberId) return
+
+    // 함수형 업데이트를 사용하여 최신 participants 상태를 참조
+    setParticipants(prev => {
+      // 해당 userId를 가진 참여자를 제거
+      return prev.filter(p => p.userId !== exitedMemberId)
+    })
+  }, [exitedMemberId])
+
+  // 브라우저 뒤로가기 시 나가기 다이얼로그 표시 (페이지 이동 방지)
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (isNavigatingToSummary.current) {
+        return
+      }
+      e.preventDefault()
+      setIsExitDialogOpen(true)
+      // 다시 현재 페이지 상태를 push 해서 실제 뒤로가기를 막음
+      window.history.pushState(null, '', window.location.href)
+    }
+
+    // 현재 페이지 상태를 한 번 push 해서 뒤로가기가 popstate를 트리거하도록 함
+    window.history.pushState(null, '', window.location.href)
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [])
+
+  // 브라우저/탭 닫기 시 나가기 요청 전송
+  useEffect(() => {
+    if (!roomInfo?.roomId || !currentUser) return
+
+    let hasSentExit = false // 중복 전송 방지
+
+    const sendExitRequest = () => {
+      if (hasSentExit || isNavigatingToSummary.current) return
+      
+      try {
+        const userStr = localStorage.getItem("user")
+        if (userStr) {
+          const userData = JSON.parse(userStr)
+          sendMemberExit(userData.id)
+          hasSentExit = true
+        }
+      } catch (error) {
+        console.error("나가기 요청 전송 실패:", error)
+      }
+    }
+
+    // visibilitychange: 탭이 숨겨질 때 (다른 탭으로 전환, 브라우저 최소화 등)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        sendExitRequest()
+      }
+    }
+
+    // pagehide: 페이지가 숨겨질 때 (뒤로가기, 앞으로가기, 탭 닫기 등)
+    const handlePageHide = () => {
+      sendExitRequest()
+    }
+
+    // beforeunload: 브라우저/탭 닫기 직전
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isNavigatingToSummary.current) {
+        return
+      }
+
+      // 나가기 요청 전송 시도
+      sendExitRequest()
+
+      // 현재 방의 roomId를 세션 스토리지에 저장 (다음 로드 시 사용)
+      if (roomInfo?.roomId) {
+        sessionStorage.setItem("navigateToSessionSummaryRoomId", String(roomInfo.roomId))
+      }
+
+      // 브라우저 기본 새로고침 확인창 표시
+      e.preventDefault()
+      e.returnValue = ''
+    }
+
+    window.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [roomInfo?.roomId, currentUser, sendMemberExit])
+
+  // 회고 생성 이벤트 수신 시 회고 다이얼로그 열기
+  useEffect(() => {
+    if (!reflectionEvent) return
+    setCurrentReflectionSessionId(reflectionEvent.sessionId)
+    setIsReflectionDialogOpen(true)
+  }, [reflectionEvent])
+
+  // reflectionData 배열을 순차적으로 처리
+  useEffect(() => {
+    if (reflectionData.length === 0) {
+      setCurrentLiveReflection(null)
+      return
+    }
+
+    // 처리되지 않은 첫 번째 항목 찾기
+    const unprocessedData = reflectionData.find(
+      (data) => !processedReflectionIds.has(data.reflectionId)
+    )
+
+    if (unprocessedData) {
+      setCurrentLiveReflection({
+        reflectionId: unprocessedData.reflectionId,
+        sessionId: unprocessedData.sessionId,
+        userName: unprocessedData.nickname,
+        userProfileUrl: unprocessedData.userProfileUrl,
+        content: unprocessedData.content,
+        focusScore: unprocessedData.focusScore,
+        imageUrl: unprocessedData.imageUrl,
+        createdAt: new Date(unprocessedData.createdAt),
+      })
+    } else {
+      setCurrentLiveReflection(null)
+    }
+  }, [reflectionData, processedReflectionIds])
+
+  const handleReflectionSubmit = (content: string, images: string[], rating: number | null) => {
+    if (!roomInfo || !currentUser) return
+
+    // reflectionEvent에서 받은 sessionId를 우선 사용, 없으면 roomInfo.currentSession 사용
+    const sessionId = currentReflectionSessionId ?? roomInfo.currentSession
+
+    const mainImageUrl = images[0] || null
+
+    sendReflection({
+      userId: currentUser.id,
+      sessionId,
+      content,
+      focusScore: rating,
+      imageUrl: mainImageUrl,
+    })
+
+    // 제출 후 sessionId 초기화
+    setCurrentReflectionSessionId(null)
+  }
+
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center p-6 md:p-10"
+      style={{
+        backgroundColor: "#fff8ea",
+      }}
+    >
+      <div className="relative z-10 w-full max-w-4xl">
+        {/* 방 정보 영역 - 제목 */}
+        <section className="mb-4 rounded-3xl bg-gradient-to-r from-white/85 via-white/75 to-white/60 backdrop-blur-2xl border border-white/70 shadow-[0_16px_40px_rgba(0,0,0,0.12)] px-6 py-4 md:px-8 md:py-5 flex flex-col gap-2 relative">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-1 flex-1">
+              <h1 className="text-lg md:text-xl font-semibold text-black">
+                {roomInfo?.title || ""}
+              </h1>
+            </div>
+          </div>
+          
+          {/* 오른쪽 캐릭터 */}
+          <div className="absolute right-6 md:right-8 top-1/2 -translate-y-1/2">
+            <img
+              src="/images/home_icon.png"
+              alt="안녕하세요!"
+              className="w-16 h-16 md:w-20 md:h-20 object-contain"
+              style={{
+                filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))",
+              }}
+            />
+          </div>
+        </section>
+
+        {/* 방 상태 및 세션 정보 영역 */}
+        {roomInfo && (
+          <section className="mb-4 rounded-2xl bg-gradient-to-r from-white/70 via-white/60 to-white/50 backdrop-blur-xl border border-white/60 shadow-[0_8px_24px_rgba(0,0,0,0.08)] px-4 py-2.5 md:px-6 md:py-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* 방 정보 헤더 */}
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{
+                    background: "#2c5f2d",
+                    boxShadow: "0 0 10px rgba(44, 95, 45, 0.35)",
+                  }}
+                />
+                <h2 className="text-sm font-semibold font-sans" style={{ color: "#2c5f2d" }}>
+                  방 정보
+                </h2>
+              </div>
+              
+              {/* 방 상태 */}
+              <span
+                className="px-2.5 py-1 rounded-md text-[10px] md:text-xs font-medium text-white"
+                style={{
+                  backgroundColor: getStatusColor(roomInfo.status),
+                }}
+              >
+                {getStatusText(roomInfo.status)}
+              </span>
+              
+              {/* 집중/휴식 시간 */}
+              {roomInfo.status !== "WAITING" && (
+                <span className="px-2.5 py-1 rounded-md text-[10px] md:text-xs font-medium bg-black/5 text-black/70">
+                  {roomInfo.focusMinutes}분 집중 → {roomInfo.breakMinutes}분 휴식
+                </span>
+              )}
+
+              {/* 소리 on/off 토글 */}
+              <div className="flex items-center gap-2 ml-auto">
+                {soundEnabled ? (
+                  <Volume2 className="w-4 h-4 text-black/70" />
+                ) : (
+                  <VolumeX className="w-4 h-4 text-black/50" />
+                )}
+                <Label htmlFor="sound-toggle" className="text-xs text-black/70 cursor-pointer">
+                  시계 소리
+                </Label>
+                <Switch
+                  id="sound-toggle"
+                  checked={soundEnabled}
+                  onCheckedChange={(checked) => {
+                    setSoundEnabledState(checked)
+                    setSoundEnabled(checked)
+                  }}
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* 메인 콘텐츠: Grid 레이아웃 */}
+        <main className="grid grid-cols-1 md:grid-cols-[1fr_288px] grid-rows-[auto_600px_auto] gap-4 md:gap-6">
+          {/* 첫 번째 row: 타이머 - timerType에 따라 PomodoroTimer 또는 FlipTimer 렌더링 */}
+          <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-8 md:px-10 md:py-10 flex flex-col items-center justify-center gap-4 overflow-hidden">
+            {roomInfo?.timerType === TimerType.FLIP ? (
+              <div className="w-full max-w-full flex items-center justify-center scale-75 md:scale-90">
+                <FlipTimer
+                  disabled={true}
+                  externalTimerState={timerState}
+                  externalMinutes={dialMinutes}
+                  roomStatus={roomInfo?.status}
+                />
+              </div>
+            ) : (
+              <PomodoroTimer
+                disabled={true}
+                externalTimerState={timerState}
+                externalMinutes={dialMinutes}
+                roomStatus={roomInfo?.status}
+              />
+            )}
+            {/* 상태 메시지 표시 */}
+            {statusMessage && (
+              <div className="text-center">
+                <p className="text-base font-medium text-gray-700">
+                  {statusMessage}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* 첫 번째 row: 참여자 명단 */}
+          <ParticipantsList participants={participants} isLoading={isLoadingParticipants} />
+
+          {/* 두 번째 row: 목표 */}
+          <div className="h-full">
+            {roomInfo && <GoalsList roomId={roomInfo.roomId} roomStatus={roomInfo.status} />}
+          </div>
+
+          {/* 두 번째 row: 채팅 */}
+          <aside className="hidden md:block h-full">
+            <div className="h-full flex flex-col">
+              <LiquidChat
+                messages={liquidChatMessages}
+                currentUserName={currentUser?.nickname || participants[0]?.nickname || "사용자"}
+                onSend={sendChatMessage}
+                onLoadMore={handleLoadMore}
+                hasMore={hasMoreMessages}
+                isLoadingMore={isLoadingMessages}
+                isInitialLoadComplete={isInitialLoadComplete}
+              />
+            </div>
+          </aside>
+
+          {/* 세 번째 row: 회고 */}
+          <div className="md:col-span-2 mt-4" style={{ minHeight: "300px" }}>
+            <Reflection
+              initialReflections={initialReflections}
+              liveReflection={currentLiveReflection}
+              onReflectionProcessed={() => {
+                if (currentLiveReflection) {
+                  // 처리 완료된 ID 기록
+                  setProcessedReflectionIds((prev) => {
+                    const next = new Set(prev)
+                    next.add(currentLiveReflection.reflectionId)
+                    return next
+                  })
+                  // 처리된 데이터 제거
+                  removeReflectionData(currentLiveReflection.reflectionId)
+                }
+              }}
+            />
+          </div>
+        </main>
+      </div>
+
+      {/* 나가기 확인 다이얼로그 */}
+      <Dialog open={isExitDialogOpen} onOpenChange={setIsExitDialogOpen}>
+        <DialogContent className="max-w-sm p-6" showCloseButton={false}>
+          <div className="flex flex-col items-center gap-4">
+            <img
+              src="/images/home_icon.png"
+              alt="나가기 확인 아이콘"
+              className="w-20 h-20 object-contain"
+            />
+            <DialogHeader className="items-center text-center">
+              <DialogTitle className="text-lg font-semibold">
+                정말 나가시겠어요?
+              </DialogTitle>
+              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+                {roomInfo?.status === "FOCUS"
+                  ? "집중 시간 중간에 나가면 이번 세션의 공부 시간은 저장되지 않을 수 있어요."
+                  : "방을 나가면 세션 요약 페이지로\n이동하게 됩니다."}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="w-full flex justify-center gap-2 mt-2">
+              <Button
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800"
+                onClick={() => {
+                  setIsExitDialogOpen(false)
+                  if (window.location.pathname !== pathname) {
+                    window.history.pushState(null, '', pathname)
+                    router.replace(pathname)
+                  }
+                }}
+              >
+                취소
+              </Button>
+              <Button
+                className="flex-1 bg-primary hover:bg-primary/90"
+                onClick={async () => {
+                  setIsExitDialogOpen(false)
+                  
+                  // 현재 사용자 정보 가져오기
+                  const userStr = localStorage.getItem("user")
+                  if (userStr && currentUser) {
+                    try {
+                      const userData = JSON.parse(userStr)
+                      // 웹소켓으로 방 떠나기 요청 전송
+                      if (roomInfo?.roomId) {
+                        sendMemberExit(userData.id)
+                        // 요청 전송 후 약간의 지연을 두고 페이지 이동
+                        await new Promise(resolve => setTimeout(resolve, 100))
+                      }
+                    } catch (error) {
+                      console.error("사용자 정보 파싱 실패:", error)
+                    }
+                  }
+                  
+                  isNavigatingToSummary.current = true
+                  // 세션 요약 페이지로 이동 시 roomId를 쿼리로 전달하여 목표/회고 API가 방 기준으로 호출되도록 함
+                  if (roomInfo?.roomId) {
+                    // 세션 요약 페이지 접근 허용용 랜덤 토큰 생성 및 저장
+                    const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+                    sessionStorage.setItem("sessionSummaryToken", token)
+                    router.push(`/session-summary?roomId=${roomInfo.roomId}&token=${encodeURIComponent(token)}`)
+                  } else {
+                    router.push("/session-summary")
+                  }
+                }}
+              >
+                나가기
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 오른쪽 하단 나가기 플로팅 버튼 */}
+      <button
+        type="button"
+        aria-label="방 나가기"
+        onClick={() => setIsExitDialogOpen(true)}
+        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 flex h-16 w-16 md:h-18 md:w-18 flex-col items-center justify-center gap-1 rounded-full bg-primary text-white shadow-xl shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors text-[11px] md:text-xs font-medium"
+      >
+        <DoorClosed className="h-5 w-5 md:h-6 md:w-6" />
+        <span>나가기</span>
+      </button>
+
+      {/* 회고 작성 다이얼로그 */}
+      <ReflectionDialog
+        open={isReflectionDialogOpen}
+        onOpenChange={setIsReflectionDialogOpen}
+        onSubmit={handleReflectionSubmit}
+        sessionNumber={currentReflectionSessionId ?? roomInfo?.currentSession}
+      />
+
+      {/* 세션 종료 다이얼로그 */}
+      <Dialog open={isSessionFinishedDialogOpen} onOpenChange={setIsSessionFinishedDialogOpen}>
+        <DialogContent className="max-w-sm p-6" showCloseButton={false}>
+          <div className="flex flex-col items-center gap-4">
+            <img
+              src="/images/home_icon.png"
+              alt="세션 종료 아이콘"
+              className="w-20 h-20 object-contain"
+            />
+            <DialogHeader className="items-center text-center">
+              <DialogTitle className="text-lg font-semibold">
+                모든 세션이 종료되었습니다!
+              </DialogTitle>
+              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+                나가기 버튼을 눌러서 퇴장해야
+                <br />
+                공부 기록이 저장됩니다.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="w-full flex justify-center mt-2">
+              <Button
+                className="w-full bg-primary hover:bg-primary/90"
+                onClick={() => {
+                  setIsSessionFinishedDialogOpen(false)
+                }}
+              >
+                네 알겠어요!
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
