@@ -292,7 +292,7 @@ function RoomPageInner() {
         }}
       >
         <div className="text-center">
-          <p className="text-lg text-black/70">방 정보를 확인하는 중...</p>
+          <p className="text-base text-black/70">방 정보를 확인하는 중...</p>
         </div>
       </div>
     )
@@ -310,10 +310,10 @@ function RoomPageInner() {
               className="w-20 h-20 object-contain"
             />
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="text-lg font-semibold">
+              <DialogTitle className="text-base font-semibold">
                 비밀번호를 입력해주세요
               </DialogTitle>
-              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+              <DialogDescription className="text-xs text-black/70 mt-1 text-center">
                 이 방은 비밀방입니다.
                 <br />
                 비밀번호를 입력하여 참여하세요.

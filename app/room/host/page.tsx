@@ -598,7 +598,7 @@ function HostRoomPageInner() {
         <section className="mb-4 rounded-3xl bg-gradient-to-r from-white/85 via-white/75 to-white/60 backdrop-blur-2xl border border-white/70 shadow-[0_16px_40px_rgba(0,0,0,0.12)] px-6 py-4 md:px-8 md:py-5 flex flex-col gap-2 relative">
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1 flex-1">
-              <h1 className="text-lg md:text-xl font-semibold text-black">
+              <h1 className="text-base md:text-lg font-semibold text-black">
                 {roomInfo?.title || ""}
               </h1>
             </div>
@@ -630,7 +630,7 @@ function HostRoomPageInner() {
                     boxShadow: "0 0 10px rgba(44, 95, 45, 0.35)",
                   }}
                 />
-                <h2 className="text-sm font-semibold font-sans" style={{ color: "#2c5f2d" }}>
+                <h2 className="text-xs font-semibold font-sans" style={{ color: "#2c5f2d" }}>
                   방 정보
                 </h2>
               </div>
@@ -811,10 +811,10 @@ function HostRoomPageInner() {
               className="w-20 h-20 object-contain"
             />
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="text-lg font-semibold">
+              <DialogTitle className="text-base font-semibold">
                 방이 생성되었습니다!
               </DialogTitle>
-              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+              <DialogDescription className="text-xs text-black/70 mt-1 text-center">
                 {roomInfo?.timerType === TimerType.FLIP
                   ? "플립 타이머 시간을 조절하여 집중 시간을 설정해보세요!"
                   : "포모도로 타이머 시간을 조절하여 집중 시간을 설정해보세요!"}
@@ -846,10 +846,10 @@ function HostRoomPageInner() {
               className="w-20 h-20 object-contain"
             />
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="text-lg font-semibold">
+              <DialogTitle className="text-base font-semibold">
                 정말 나가시겠어요?
               </DialogTitle>
-              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+              <DialogDescription className="text-xs text-black/70 mt-1 text-center">
                 {roomInfo?.status === "FOCUS"
                   ? "집중 시간 중간에 나가면 이번 세션의 공부 시간은 저장되지 않을 수 있어요."
                   : "방을 나가면 세션 요약 페이지로\n이동하게 됩니다."}
@@ -930,10 +930,10 @@ function HostRoomPageInner() {
               className="w-20 h-20 object-contain"
             />
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="text-lg font-semibold">
+              <DialogTitle className="text-base font-semibold">
                 방장이 변경되었어요
               </DialogTitle>
-              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+              <DialogDescription className="text-xs text-black/70 mt-1 text-center">
                 {hostTransferredMessage}
               </DialogDescription>
             </DialogHeader>
@@ -959,10 +959,10 @@ function HostRoomPageInner() {
               className="w-20 h-20 object-contain"
             />
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="text-lg font-semibold">
+              <DialogTitle className="text-base font-semibold">
                 방장 권한을 위임하시겠어요?
               </DialogTitle>
-              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+              <DialogDescription className="text-xs text-black/70 mt-1 text-center">
                 {transferTargetNickname}님에게 방장 권한을 위임하면
                 <br />
                 더 이상 방을 관리할 수 없어요.
@@ -1023,10 +1023,10 @@ function HostRoomPageInner() {
               className="w-20 h-20 object-contain"
             />
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="text-lg font-semibold">
+              <DialogTitle className="text-base font-semibold">
                 모든 세션이 종료되었습니다!
               </DialogTitle>
-              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+              <DialogDescription className="text-xs text-black/70 mt-1 text-center">
                 나가기 버튼을 눌러서 퇴장해야
                 <br />
                 공부 기록이 저장됩니다.

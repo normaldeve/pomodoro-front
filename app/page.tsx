@@ -277,7 +277,7 @@ function HomePageInner() {
       }}
     >
       {/* Header + Main content wrapper */}
-      <div className="relative z-10 flex w-full max-w-6xl flex-col gap-8">
+      <div className="relative z-10 flex w-full max-w-4xl flex-col gap-8">
         {/* Header */}
         <header
           className="relative flex items-center gap-4 py-3 text-xs md:text-sm text-black transition-all duration-700 ease-out"
@@ -304,7 +304,7 @@ function HomePageInner() {
               priority
             />
             <span
-              className="text-2xl md:text-3xl font-bold font-service-name"
+              className="text-xl md:text-2xl font-bold font-service-name"
               style={{
                 letterSpacing: "0.05em",
                 color: "#2c5f2d",
@@ -460,12 +460,12 @@ function HomePageInner() {
                       {/* Left: 텍스트 영역 */}
                       <div className="flex-1 flex flex-col gap-2 md:gap-3">
                         <div className="space-y-2">
-                          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-black">
+                          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight text-black">
                             포모도로와 함께,
                             <br />
                             사람들과 함께하는 스터디
                           </h1>
-                          <p className="text-sm md:text-base text-black/70 max-w-xl leading-relaxed">
+                          <p className="text-xs md:text-sm text-black/70 max-w-xl leading-relaxed">
                             같은 리듬으로 함께 집중하고 쉬어 주면
                             훨씬 오래, 더 편안하게 몰입할 수 있어요.
                             <br className="hidden md:inline" />
@@ -495,12 +495,12 @@ function HomePageInner() {
                       {/* Left: 텍스트 영역 */}
                       <div className="flex-1 flex flex-col gap-2 md:gap-3">
                         <div className="space-y-2">
-                          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-black">
+                          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight text-black">
                             포인트를 쌓아서
                             <br />
                             나의 뽀모를 키워보세요!
                           </h1>
-                          <p className="text-sm md:text-base text-black/70 max-w-xl leading-relaxed">
+                          <p className="text-xs md:text-sm text-black/70 max-w-xl leading-relaxed">
                             공부방에서 집중하고 세션을 완료하면 포인트가 쌓여요.
                             <br className="hidden md:inline" />
                             포인트가 쌓일수록 뽀모 캐릭터가 성장하고 레벨이 올라가요!
@@ -577,7 +577,7 @@ function HomePageInner() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-lg md:text-xl font-semibold text-black">
+                      <h2 className="text-base md:text-lg font-semibold text-black">
                         지금 진행 중인 스터디
                       </h2>
                     </div>
@@ -609,7 +609,7 @@ function HomePageInner() {
                   {/* 오른쪽 상단: 총 방 개수와 검색창 */}
                   <div className="flex flex-col items-end gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm md:text-base text-black/60 whitespace-nowrap">
+                      <span className="text-xs md:text-sm text-black/60 whitespace-nowrap">
                         총 {totalRooms}개 방
                       </span>
                       <button
@@ -630,7 +630,7 @@ function HomePageInner() {
                       <input
                         type="text"
                         placeholder="스터디 이름이나 태그로 검색해보세요!"
-                        className="w-full rounded-full bg-transparent border border-black/10 py-2 pl-9 pr-4 text-sm md:text-base text-black placeholder:text-black/40 outline-none shadow-sm focus:bg-white focus:border-black/30 transition-colors"
+                        className="w-full rounded-full bg-transparent border border-black/10 py-2 pl-9 pr-4 text-xs md:text-sm text-black placeholder:text-black/40 outline-none shadow-sm focus:bg-white focus:border-black/30 transition-colors"
                       />
                     </div>
                   </div>
@@ -639,11 +639,11 @@ function HomePageInner() {
 
               <div className="grid grid-cols-2 gap-3 md:gap-4">
                 {isLoadingRooms ? (
-                  <div className="col-span-full text-center py-8 text-sm md:text-base text-black/60">
+                  <div className="col-span-full text-center py-8 text-xs md:text-sm text-black/60">
                     로딩 중...
                   </div>
                 ) : studyRooms.length === 0 ? (
-                  <div className="col-span-full text-center py-8 text-sm md:text-base text-black/60">
+                  <div className="col-span-full text-center py-8 text-xs md:text-sm text-black/60">
                     등록된 스터디룸이 없습니다.
                   </div>
                 ) : (
@@ -733,7 +733,7 @@ function HomePageInner() {
                               boxShadow: statusConfig.shadow === "none" ? "none" : statusConfig.shadow,
                             }}
                           />
-                          <CardTitle className="text-base md:text-lg font-bold text-black line-clamp-2">
+                          <CardTitle className="text-sm md:text-base font-bold text-black line-clamp-2">
                             {room.name}
                           </CardTitle>
                           {room.isPrivate && (
@@ -743,7 +743,7 @@ function HomePageInner() {
                         {/* 참여 인원 - 오른쪽 상단 절대 위치 */}
                         <div className="absolute top-0 right-5 flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/60 border border-white/70">
                           <User className="h-3.5 w-3.5 text-black/70" />
-                          <span className="text-sm font-medium text-black/80">
+                          <span className="text-xs font-medium text-black/80">
                             {room.participants} / {room.totalParticipants}
                           </span>
                         </div>
@@ -756,7 +756,7 @@ function HomePageInner() {
                               {room.hashtags.map((tag, index) => (
                                 <span
                                   key={index}
-                                  className="px-2 py-1 rounded-md text-xs md:text-sm font-medium"
+                                  className="px-2 py-1 rounded-md text-[10px] md:text-xs font-medium"
                                   style={{
                                     background: "rgba(0, 0, 0, 0.05)",
                                     color: "rgba(0, 0, 0, 0.7)",
@@ -809,10 +809,10 @@ function HomePageInner() {
                               </div>
                               {/* 오른쪽: 세션 정보 */}
                               <div className="flex items-center gap-1.5">
-                                <span className="text-sm md:text-base text-black/60">
+                                <span className="text-xs md:text-sm text-black/60">
                                   세션
                                 </span>
-                                <span className="text-base md:text-lg font-semibold text-black/80 tabular-nums">
+                                <span className="text-sm md:text-base font-semibold text-black/80 tabular-nums">
                                   {room.currentSession} / {room.totalSessions}
                                 </span>
                               </div>
@@ -834,7 +834,7 @@ function HomePageInner() {
                 {currentPage > 0 && (
                   <button
                     onClick={() => setCurrentPage(currentPage - 1)}
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 hover:scale-110 border border-black"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-200 hover:scale-110 border border-black"
                     aria-label="이전 페이지"
                   >
                     <ChevronLeft className="w-5 h-5" />
@@ -879,7 +879,7 @@ function HomePageInner() {
                 {currentPage < totalPages - 1 && (
                   <button
                     onClick={() => setCurrentPage(currentPage + 1)}
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 hover:scale-110 border border-black"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-200 hover:scale-110 border border-black"
                     aria-label="다음 페이지"
                   >
                     <ChevronRight className="w-5 h-5" />
@@ -903,10 +903,10 @@ function HomePageInner() {
               className="w-20 h-20 object-contain"
             />
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="text-lg font-semibold">
+              <DialogTitle className="text-base font-semibold">
                 {selectedRoom ? selectedRoom.name : "스터디 입장하기"}
               </DialogTitle>
-              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+              <DialogDescription className="text-xs text-black/70 mt-1 text-center">
                 {selectedRoom?.status === "before_start" ? (
                   <>
                     아직 시작 전이에요.
@@ -990,10 +990,10 @@ function HomePageInner() {
               className="w-20 h-20 object-contain"
             />
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="text-lg font-semibold">
+              <DialogTitle className="text-base font-semibold">
                 로그인이 필요합니다
               </DialogTitle>
-              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+              <DialogDescription className="text-xs text-black/70 mt-1 text-center">
                 {searchParams.get("roomId") ? (
                   <>
                     방에 입장하려면
@@ -1055,8 +1055,8 @@ function HomePageInner() {
               className="w-20 h-20 object-contain"
             />
             <DialogHeader className="items-center text-center">
-              <DialogTitle className="text-xl font-semibold">새 공부방 만들기</DialogTitle>
-              <DialogDescription className="text-sm text-black/70">
+              <DialogTitle className="text-lg font-semibold">새 공부방 만들기</DialogTitle>
+              <DialogDescription className="text-xs text-black/70">
                 공부방 정보를 입력해주세요
               </DialogDescription>
             </DialogHeader>
@@ -1066,10 +1066,10 @@ function HomePageInner() {
             <div className="flex flex-col gap-4 pr-2">
             {/* 타이머 형태 선택 */}
             <div className="flex flex-col gap-2">
-              <Label className="text-sm font-medium">
+              <Label className="text-xs font-medium">
                 타이머 형태
               </Label>
-              <p className="text-xs text-black/60">
+              <p className="text-[10px] text-black/60">
                 사용할 타이머를 선택해주세요.
               </p>
               <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1183,7 +1183,7 @@ function HomePageInner() {
 
             {/* 스터디 이름 */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="room-name" className="text-sm font-medium">
+              <Label htmlFor="room-name" className="text-xs font-medium">
                 스터디 이름
               </Label>
               <Input
@@ -1203,7 +1203,7 @@ function HomePageInner() {
 
             {/* 해시태그 */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="hashtags" className="text-sm font-medium">
+              <Label htmlFor="hashtags" className="text-xs font-medium">
                 해시태그
               </Label>
               <Input
@@ -1244,7 +1244,7 @@ function HomePageInner() {
 
             {/* 세션 횟수 */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="sessions" className="text-sm font-medium">
+              <Label htmlFor="sessions" className="text-xs font-medium">
                 세션 횟수
               </Label>
               <Input
@@ -1275,7 +1275,7 @@ function HomePageInner() {
 
             {/* 쉬는 시간 */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="break-time" className="text-sm font-medium">
+              <Label htmlFor="break-time" className="text-xs font-medium">
                 쉬는 시간 (분)
               </Label>
               <Input
@@ -1306,7 +1306,7 @@ function HomePageInner() {
 
             {/* 제한 인원 */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="max-participants" className="text-sm font-medium">
+              <Label htmlFor="max-participants" className="text-xs font-medium">
                 제한 인원
               </Label>
               <Input
@@ -1338,7 +1338,7 @@ function HomePageInner() {
             {/* 비밀방 선택 */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-4 py-3 px-4 rounded-lg border border-black/10 bg-white/50">
-                <Label htmlFor="is-private" className="text-sm font-medium cursor-pointer text-black">
+                <Label htmlFor="is-private" className="text-xs font-medium cursor-pointer text-black">
                   비밀방
                 </Label>
                 <Switch
@@ -1351,7 +1351,7 @@ function HomePageInner() {
               {/* 비밀번호 입력 필드 - 비밀방이 체크되었을 때만 표시 */}
               {isPrivate && (
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="room-password" className="text-sm font-medium">
+                  <Label htmlFor="room-password" className="text-xs font-medium">
                     비밀번호
                   </Label>
                   <Input
