@@ -13,7 +13,7 @@ import { Label } from "./label"
 import { Button } from "./button"
 import { Switch } from "./switch"
 import { CustomScrollbar } from "./custom-scrollbar"
-import { User, Bell, Camera } from "lucide-react"
+import { User, Bell, Camera, MessageSquare } from "lucide-react"
 import { updateUserInfo, getCurrentUser } from "@/lib/api"
 import { showSuccessNotification } from "@/lib/system-notification"
 
@@ -173,6 +173,16 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
               <Bell className="w-4 h-4" />
               <span>알림 설정</span>
             </TabsTrigger>
+            <TabsTrigger
+              value="feedback"
+              className="flex items-center gap-2 rounded-lg transition-all data-[state=active]:bg-white/40 data-[state=active]:backdrop-blur-[10px] data-[state=active]:shadow-sm"
+              style={{
+                color: colors.text,
+              }}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>피드백</span>
+            </TabsTrigger>
           </TabsList>
 
           <CustomScrollbar className="flex-1 overflow-y-auto min-h-0">
@@ -282,6 +292,34 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
                     }}
                   >
                     저장
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="feedback" className="mt-0">
+              <div className="flex flex-col gap-4 px-2">
+                <div className="flex flex-col items-center gap-4 py-6">
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <h3 className="text-lg font-semibold" style={{ color: colors.text }}>
+                      서비스 피드백
+                    </h3>
+                    <p className="text-sm" style={{ color: colors.textLight }}>
+                      뽀개더를 이용해 주셔서 감사합니다.
+                      <br />
+                      더 나은 서비스 개선을 위해 피드백을 남겨주세요.
+                    </p>
+                  </div>
+                  <Button
+                    className="bg-primary hover:bg-primary/90 text-white px-8 py-6 text-base"
+                    onClick={() => {
+                      window.open(
+                        "https://docs.google.com/forms/d/e/1FAIpQLSehufDAXrsmkLDTl-51xFai9KpSzUza71nvBeRSt5WrOUUFsQ/viewform?usp=publish-editor",
+                        "_blank"
+                      )
+                    }}
+                  >
+                    피드백 작성하기
                   </Button>
                 </div>
               </div>
