@@ -180,8 +180,9 @@ export function GoalsList({ roomId, roomStatus }: GoalsListProps) {
           goals.map((goal) => (
             <div
               key={goal.id}
-              className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/50 border border-white/60"
+              className="flex items-center gap-3 px-3 py-2 rounded-xl border border-white/60"
               style={{
+                backgroundColor: goal.completed ? "rgba(197, 212, 192, 0.4)" : "rgba(197, 212, 192, 0.6)",
                 backdropFilter: "blur(10px)",
                 opacity: goal.completed ? 0.6 : 1,
               }}

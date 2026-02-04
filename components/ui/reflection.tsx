@@ -180,8 +180,9 @@ export function Reflection({
           reflections.map((reflection) => (
             <div
               key={reflection.id}
-              className="flex gap-3 px-4 py-3 rounded-2xl bg-white/50 border border-white/60"
+              className="flex gap-3 px-4 py-3 rounded-2xl border border-white/60"
               style={{
+                backgroundColor: "rgba(197, 212, 192, 0.6)",
                 backdropFilter: "blur(10px)",
               }}
             >
@@ -209,13 +210,13 @@ export function Reflection({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span
-                    className="text-sm font-semibold font-sans"
+                    className="text-xs font-semibold font-sans"
                     style={{ color: "#111827" }} // 작성자 이름: 검정색
                   >
                     {reflection.authorName}
                   </span>
                   <span
-                    className="text-xs font-sans"
+                    className="text-[10px] font-sans"
                     style={{ color: colors.textLight }}
                   >
                     {formatTime(reflection.timestamp)}
@@ -223,10 +224,10 @@ export function Reflection({
                   {/* 세션 정보 표시 */}
                   {reflection.sessionId !== undefined && reflection.sessionId !== null && (
                     <span
-                      className="text-xs font-sans px-2 py-0.5 rounded-md"
+                      className="text-[10px] font-sans px-1.5 py-0.5 rounded-md"
                       style={{
                         color: colors.text,
-                        backgroundColor: "rgba(45, 74, 62, 0.06)",
+                        backgroundColor: "rgba(255, 255, 255, 0.7)",
                       }}
                     >
                       {reflection.sessionId}번째 세션
@@ -247,7 +248,7 @@ export function Reflection({
                   )}
                 </div>
                 <p
-                  className="text-sm font-sans leading-relaxed break-words mb-2"
+                  className="text-xs font-sans leading-relaxed break-words mb-2"
                   style={{ color: "#111827" }} // 회고 내용: 검정색
                 >
                   {reflection.content}
