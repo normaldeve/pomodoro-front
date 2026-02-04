@@ -1056,4 +1056,3 @@ export default function HostRoomPage() {
     </Suspense>
   )
 }
-
