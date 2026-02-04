@@ -280,31 +280,31 @@ function HomePageInner() {
       <div className="relative z-10 flex w-full max-w-4xl flex-col gap-8">
         {/* Header */}
         <header
-          className="relative flex items-center gap-4 py-3 text-xs md:text-sm text-black transition-all duration-700 ease-out"
+          className="relative flex items-center justify-between gap-4 py-3 text-xs md:text-sm text-black transition-all duration-700 ease-out min-h-[60px]"
           style={{
             opacity: showHeader ? 1 : 0,
             transform: showHeader ? "translateY(0)" : "translateY(-20px)",
           }}
         >
-          {/* Left: 사이트 로고 - absolute로 살짝 튀어나오게 */}
+          {/* Left: 사이트 로고 */}
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center gap-3 cursor-pointer"
+            className="flex items-center gap-2 md:gap-3 cursor-pointer flex-shrink-0"
           >
             <Image
               src="/images/home_icon.png"
               alt="홈으로 이동"
               width={64}
               height={64}
-              className="w-12 h-12 md:w-16 md:h-16 object-contain"
+              className="w-10 h-10 md:w-16 md:h-16 object-contain"
               style={{
                 filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))",
               }}
               priority
             />
             <span
-              className="text-xl md:text-2xl font-bold font-service-name"
+              className="text-lg md:text-2xl font-bold font-service-name"
               style={{
                 letterSpacing: "0.05em",
                 color: "#2c5f2d",
@@ -315,7 +315,7 @@ function HomePageInner() {
           </button>
 
           {/* Right: 프로필 또는 로그인 버튼 */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
             {isLoggedIn ? (
               <>
                 {/* 랭킹 버튼 */}
@@ -574,15 +574,15 @@ function HomePageInner() {
               }}
             >
               <header className="flex flex-col gap-3 px-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                  <div className="flex-1 w-full md:w-auto">
                     <div className="flex items-center gap-3 mb-2">
                       <h2 className="text-base md:text-lg font-semibold text-black">
-                        지금 진행 중인 스터디
+                        진행 중인 스터디
                       </h2>
                     </div>
                     {/* 상태 색상 설명 */}
-                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-2">
                       <div className="flex items-center gap-1.5">
                         <span
                           className="w-2.5 h-2.5 rounded-full"
@@ -607,8 +607,8 @@ function HomePageInner() {
                     </div>
                   </div>
                   {/* 오른쪽 상단: 총 방 개수와 검색창 */}
-                  <div className="flex flex-col items-end gap-3">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col items-start md:items-end gap-2 md:gap-3 w-full md:w-auto">
+                    <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
                       <span className="text-xs md:text-sm text-black/60 whitespace-nowrap">
                         총 {totalRooms}개 방
                       </span>
@@ -616,7 +616,7 @@ function HomePageInner() {
                         type="button"
                         onClick={fetchStudyRooms}
                         disabled={isLoadingRooms}
-                        className="flex items-center justify-center h-8 w-8 rounded-full border border-primary/40 bg-primary text-xs text-white shadow-[0_8px_20px_rgba(44,95,45,0.45)] hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center justify-center h-8 w-8 rounded-full border border-primary/40 bg-primary text-xs text-white shadow-[0_8px_20px_rgba(44,95,45,0.45)] hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                         aria-label="스터디 목록 새로고침"
                       >
                         <RefreshCw
@@ -625,7 +625,7 @@ function HomePageInner() {
                       </button>
                     </div>
                     {/* 검색창 */}
-                    <div className="relative w-[280px] md:w-[360px]">
+                    <div className="relative w-full md:w-[280px] lg:w-[360px]">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/60" />
                       <input
                         type="text"
@@ -637,7 +637,7 @@ function HomePageInner() {
                 </div>
               </header>
 
-              <div className="grid grid-cols-2 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 {isLoadingRooms ? (
                   <div className="col-span-full text-center py-8 text-xs md:text-sm text-black/60">
                     로딩 중...
