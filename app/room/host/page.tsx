@@ -27,7 +27,7 @@ import { useStudyRoomWebSocket } from "@/hooks/use-study-room-websocket"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound-notification"
-import { Volume2, VolumeX, User, ChevronRight, ChevronLeft, MessageSquare, X } from "lucide-react"
+import { Volume2, VolumeX, User, MessageSquare } from "lucide-react"
 
 // 초를 00:00 형식으로 변환하는 함수
 const formatTime = (seconds: number): string => {
@@ -775,24 +775,27 @@ function HostRoomPageInner() {
             )}
           </div>
 
-          {/* 참여자 명단 (토글) */}
-          {isParticipantsVisible && (
-            <div className="md:absolute md:right-0 md:top-0 md:w-72 md:z-20">
-              <ParticipantsList 
-                participants={participants} 
-                isLoading={isLoadingParticipants}
-                isHost={true}
-                onTransferHost={(userId) => {
-                  const targetParticipant = participants.find(p => p.userId === userId)
-                  if (targetParticipant) {
-                    setTransferTargetUserId(userId)
-                    setTransferTargetNickname(targetParticipant.nickname)
-                    setIsTransferHostDialogOpen(true)
-                  }
-                }}
-              />
-            </div>
-          )}
+          {/* 참여자 명단 Dialog */}
+          <Dialog open={isParticipantsVisible} onOpenChange={setIsParticipantsVisible}>
+            <DialogContent className="!max-w-md sm:!max-w-md !w-[90vw] sm:!w-[90vw] !max-h-[80vh] !h-auto overflow-hidden !flex !flex-col p-0 !grid-cols-none" hideOverlay={true}>
+              <DialogTitle className="sr-only">참여자 목록</DialogTitle>
+              <div className="flex-1 overflow-y-auto min-h-0">
+                <ParticipantsList 
+                  participants={participants} 
+                  isLoading={isLoadingParticipants}
+                  isHost={true}
+                  onTransferHost={(userId) => {
+                    const targetParticipant = participants.find(p => p.userId === userId)
+                    if (targetParticipant) {
+                      setTransferTargetUserId(userId)
+                      setTransferTargetNickname(targetParticipant.nickname)
+                      setIsTransferHostDialogOpen(true)
+                    }
+                  }}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* 두 번째 row: 목표 & 회고를 좌우 반반 배치 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-2">
@@ -822,18 +825,11 @@ function HostRoomPageInner() {
             </div>
           </div>
 
-          {/* 채팅 (토글) */}
-          {isChatVisible && (
-            <div className="md:absolute md:right-0 md:top-0 md:w-80 md:h-[600px] md:z-20 relative">
-              {/* X 버튼 */}
-              <button
-                onClick={() => setIsChatVisible(false)}
-                className="absolute top-2 right-2 z-30 p-1.5 rounded-full bg-white/80 backdrop-blur-sm border border-white/60 shadow-sm hover:bg-white transition-colors"
-                aria-label="채팅창 닫기"
-              >
-                <X className="w-4 h-4 text-black/70" />
-              </button>
-              <div className="h-full flex flex-col rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)]">
+          {/* 채팅 Dialog */}
+          <Dialog open={isChatVisible} onOpenChange={setIsChatVisible}>
+            <DialogContent className="!max-w-[280px] sm:!max-w-[280px] md:!max-w-[280px] lg:!max-w-[280px] !w-[65vw] sm:!w-[65vw] md:!w-[65vw] lg:!w-[65vw] !h-[80vh] overflow-hidden !flex !flex-col !grid-cols-none p-0" hideOverlay={true}>
+              <DialogTitle className="sr-only">채팅</DialogTitle>
+              <div className="flex-1 min-h-0 overflow-hidden">
                 <LiquidChat
                   messages={liquidChatMessages}
                   currentUserName={currentUser?.nickname || participants[0]?.nickname || "사용자"}
@@ -848,8 +844,8 @@ function HostRoomPageInner() {
                   isInitialLoadComplete={isInitialLoadComplete}
                 />
               </div>
-            </div>
-          )}
+            </DialogContent>
+          </Dialog>
 
         </main>
       </div>

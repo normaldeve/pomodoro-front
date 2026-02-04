@@ -32,7 +32,7 @@ export function ParticipantsList({
   onTransferHost
 }: ParticipantsListProps) {
   return (
-    <aside className="hidden md:block">
+    <aside className="block">
       <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-5 py-6 flex flex-col gap-4 h-full">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
