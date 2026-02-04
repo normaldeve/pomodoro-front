@@ -126,9 +126,8 @@ export function GoalsList({ roomId, roomStatus }: GoalsListProps) {
 
   return (
     <div
-      className="flex flex-col rounded-3xl w-full"
+      className="flex flex-col rounded-3xl w-full h-[400px] max-h-[400px]"
       style={{
-        height: "100%",
         background:
           "linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.45), rgba(255,255,255,0.25))",
         backdropFilter: "blur(30px) saturate(180%)",
@@ -162,7 +161,7 @@ export function GoalsList({ roomId, roomStatus }: GoalsListProps) {
       </div>
 
       {/* Goals List */}
-      <CustomScrollbar className="flex-1 overflow-y-auto px-4 py-4 space-y-2 min-h-0">
+      <CustomScrollbar className="flex-1 overflow-y-auto px-4 py-4 space-y-2 min-h-0 max-h-full">
         {isLoading ? (
           <div
             className="text-center py-8 text-sm font-sans"

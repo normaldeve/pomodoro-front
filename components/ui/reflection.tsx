@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react"
 import { Star } from "lucide-react"
+import { CustomScrollbar } from "./custom-scrollbar"
 
 export interface Reflection {
   id: number
@@ -132,9 +133,8 @@ export function Reflection({
 
   return (
     <div
-      className="flex flex-col rounded-3xl w-full"
+      className="flex flex-col rounded-3xl w-full h-[400px] max-h-[400px]"
       style={{
-        height: "100%",
         background:
           "linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.45), rgba(255,255,255,0.25))",
         backdropFilter: "blur(30px) saturate(180%)",
@@ -168,7 +168,7 @@ export function Reflection({
       </div>
 
       {/* Reflections List */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <CustomScrollbar className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0 max-h-full">
         {reflections.length === 0 ? (
           <div
             className="text-center py-8 text-sm font-sans"
@@ -292,7 +292,7 @@ export function Reflection({
             </div>
           ))
         )}
-      </div>
+      </CustomScrollbar>
     </div>
   )
 }

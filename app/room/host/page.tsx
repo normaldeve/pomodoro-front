@@ -588,6 +588,36 @@ function HostRoomPageInner() {
     setCurrentReflectionSessionId(null)
   }
 
+  // 채팅창이 열려있을 때 외부 스크롤 감지하여 채팅창 닫기
+  useEffect(() => {
+    if (!isChatVisible) return
+
+    const handleScroll = (e: Event) => {
+      const target = e.target
+      // target이 Element인지 확인하고 closest 메서드가 있는지 확인
+      if (target && target instanceof Element && 'closest' in target) {
+        // Dialog 내부 요소인지 확인
+        const dialogContent = target.closest('[data-slot="dialog-content"]')
+        // Dialog 내부가 아니면 채팅창 닫기
+        if (!dialogContent) {
+          setIsChatVisible(false)
+        }
+      } else {
+        // target이 Element가 아니면 (document나 window인 경우) 채팅창 닫기
+        setIsChatVisible(false)
+      }
+    }
+
+    // 스크롤 이벤트 리스너 추가 (capture phase에서도 감지)
+    window.addEventListener('scroll', handleScroll, true)
+    document.addEventListener('scroll', handleScroll, true)
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true)
+      document.removeEventListener('scroll', handleScroll, true)
+    }
+  }, [isChatVisible])
+
   return (
     <div
       className="min-h-screen flex items-stretch justify-center p-6 md:p-10"
@@ -777,7 +807,7 @@ function HostRoomPageInner() {
 
           {/* 참여자 명단 Dialog */}
           <Dialog open={isParticipantsVisible} onOpenChange={setIsParticipantsVisible}>
-            <DialogContent className="!max-w-md sm:!max-w-md !w-[90vw] sm:!w-[90vw] !max-h-[80vh] !h-auto overflow-hidden !flex !flex-col p-0 !grid-cols-none" hideOverlay={true}>
+            <DialogContent className="!max-w-[280px] sm:!max-w-[280px] md:!max-w-[280px] lg:!max-w-[280px] !w-[65vw] sm:!w-[65vw] md:!w-[65vw] lg:!w-[65vw] !max-h-[80vh] !h-auto overflow-hidden !flex !flex-col p-0 !grid-cols-none md:!left-auto md:!right-4 md:!top-4 md:!translate-x-0 md:!translate-y-0" hideOverlay={true}>
               <DialogTitle className="sr-only">참여자 목록</DialogTitle>
               <div className="flex-1 overflow-y-auto min-h-0">
                 <ParticipantsList 
@@ -805,7 +835,7 @@ function HostRoomPageInner() {
             </div>
 
             {/* 회고 */}
-            <div className="min-h-[300px]">
+            <div className="h-full">
               <Reflection
                 initialReflections={initialReflections}
                 liveReflection={currentLiveReflection}
@@ -827,7 +857,7 @@ function HostRoomPageInner() {
 
           {/* 채팅 Dialog */}
           <Dialog open={isChatVisible} onOpenChange={setIsChatVisible}>
-            <DialogContent className="!max-w-[280px] sm:!max-w-[280px] md:!max-w-[280px] lg:!max-w-[280px] !w-[65vw] sm:!w-[65vw] md:!w-[65vw] lg:!w-[65vw] !h-[80vh] overflow-hidden !flex !flex-col !grid-cols-none p-0" hideOverlay={true}>
+            <DialogContent className="!max-w-[280px] sm:!max-w-[280px] md:!max-w-[280px] lg:!max-w-[280px] !w-[65vw] sm:!w-[65vw] md:!w-[65vw] lg:!w-[65vw] !h-[80vh] overflow-hidden !flex !flex-col !grid-cols-none p-0 md:!left-auto md:!right-4 md:!top-4 md:!translate-x-0 md:!translate-y-0" hideOverlay={true}>
               <DialogTitle className="sr-only">채팅</DialogTitle>
               <div className="flex-1 min-h-0 overflow-hidden">
                 <LiquidChat
