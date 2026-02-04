@@ -27,7 +27,7 @@ import { useStudyRoomWebSocket } from "@/hooks/use-study-room-websocket"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound-notification"
-import { Volume2, VolumeX } from "lucide-react"
+import { Volume2, VolumeX, User, ChevronRight, ChevronLeft, MessageSquare, X } from "lucide-react"
 
 // 초를 00:00 형식으로 변환하는 함수
 const formatTime = (seconds: number): string => {
@@ -71,6 +71,8 @@ function HostRoomPageInner() {
   const [participants, setParticipants] = useState<StudyRoomMemberResponse[]>([])
   const [isLoadingParticipants, setIsLoadingParticipants] = useState(false)
   const [soundEnabled, setSoundEnabledState] = useState(true)
+  const [isParticipantsVisible, setIsParticipantsVisible] = useState(false)
+  const [isChatVisible, setIsChatVisible] = useState(false)
 
   // WebSocket 연결
   const { sendDialDrag, sendTimerStart, sendTimerPause, sendTimerResume, sendNextFocusMinutes, statusMessage, timerState, sendChatMessage, chatMessages, newMember, exitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData, hostTransferredEvent } = useStudyRoomWebSocket(roomInfo?.roomId || null)
@@ -588,12 +590,12 @@ function HostRoomPageInner() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-6 md:p-10"
+      className="min-h-screen flex items-stretch justify-center p-6 md:p-10"
       style={{
         backgroundColor: "#fff8ea",
       }}
     >
-      <div className="relative z-10 w-full max-w-4xl">
+      <div className="relative z-10 flex w-full max-w-3xl flex-col">
         {/* 방 정보 영역 - 제목 */}
         <section className="mb-4 rounded-3xl bg-gradient-to-r from-white/85 via-white/75 to-white/60 backdrop-blur-2xl border border-white/70 shadow-[0_16px_40px_rgba(0,0,0,0.12)] px-6 py-4 md:px-8 md:py-5 flex flex-col gap-2 relative">
           <div className="flex items-center justify-between gap-3">
@@ -652,6 +654,35 @@ function HostRoomPageInner() {
                 </span>
               )}
 
+              {/* 참여자 명단 토글 버튼 */}
+              <button
+                onClick={() => setIsParticipantsVisible(!isParticipantsVisible)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors"
+                style={{
+                  backgroundColor: "#2c5f2d",
+                  color: "white",
+                }}
+                title="참여자 목록"
+              >
+                <User className="w-4 h-4" />
+                <span className="text-[10px] md:text-xs font-medium">
+                  {participants.length}
+                </span>
+              </button>
+
+              {/* 채팅 토글 버튼 */}
+              <button
+                onClick={() => setIsChatVisible(!isChatVisible)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors"
+                style={{
+                  backgroundColor: "#2c5f2d",
+                  color: "white",
+                }}
+                title="채팅"
+              >
+                <MessageSquare className="w-4 h-4" />
+              </button>
+
               {/* 소리 on/off 토글 */}
               <div className="flex items-center gap-2 ml-auto">
                 {soundEnabled ? (
@@ -675,12 +706,12 @@ function HostRoomPageInner() {
           </section>
         )}
 
-        {/* 메인 콘텐츠: Grid 레이아웃 */}
-        <main className="grid grid-cols-1 md:grid-cols-[1fr_288px] grid-rows-[auto_600px_auto] gap-4 md:gap-6">
-          {/* 첫 번째 row: 타이머 - timerType에 따라 PomodoroTimer 또는 FlipTimer 렌더링 */}
-          <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-8 md:px-10 md:py-10 flex items-center justify-center overflow-hidden">
+        {/* 메인 콘텐츠 */}
+        <main className="relative flex flex-col gap-4 md:gap-6">
+          {/* 첫 번째 row: 타이머 - 한 줄 전체 사용 */}
+          <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-8 md:px-10 md:py-10 flex items-center justify-center overflow-hidden w-full">
             {roomInfo?.timerType === TimerType.FLIP ? (
-              <div className="w-full max-w-full flex items-center justify-center scale-75 md:scale-90">
+              <div className="w-full max-w-full flex items-center justify-center scale-65 md:scale-75">
                 <FlipTimer
                 disabled={false}
                 defaultMinutes={roomInfo?.focusMinutes || 25}
@@ -744,60 +775,82 @@ function HostRoomPageInner() {
             )}
           </div>
 
-          {/* 첫 번째 row: 참여자 명단 */}
-          <ParticipantsList 
-            participants={participants} 
-            isLoading={isLoadingParticipants}
-            isHost={true}
-            onTransferHost={(userId) => {
-              const targetParticipant = participants.find(p => p.userId === userId)
-              if (targetParticipant) {
-                setTransferTargetUserId(userId)
-                setTransferTargetNickname(targetParticipant.nickname)
-                setIsTransferHostDialogOpen(true)
-              }
-            }}
-          />
-
-          {/* 두 번째 row: 목표 */}
-          <div className="h-full">
-            {roomInfo && <GoalsList roomId={roomInfo.roomId} roomStatus={roomInfo.status} />}
-          </div>
-
-          {/* 두 번째 row: 채팅 */}
-          <aside className="hidden md:block h-full">
-            <div className="h-full flex flex-col">
-              <LiquidChat
-                messages={liquidChatMessages}
-                currentUserName={currentUser?.nickname || participants[0]?.nickname || "사용자"}
-                onSend={sendChatMessage}
-                onLoadMore={handleLoadMore}
-                hasMore={hasMoreMessages}
-                isLoadingMore={isLoadingMessages}
-                isInitialLoadComplete={isInitialLoadComplete}
+          {/* 참여자 명단 (토글) */}
+          {isParticipantsVisible && (
+            <div className="md:absolute md:right-0 md:top-0 md:w-72 md:z-20">
+              <ParticipantsList 
+                participants={participants} 
+                isLoading={isLoadingParticipants}
+                isHost={true}
+                onTransferHost={(userId) => {
+                  const targetParticipant = participants.find(p => p.userId === userId)
+                  if (targetParticipant) {
+                    setTransferTargetUserId(userId)
+                    setTransferTargetNickname(targetParticipant.nickname)
+                    setIsTransferHostDialogOpen(true)
+                  }
+                }}
               />
             </div>
-          </aside>
+          )}
 
-          {/* 세 번째 row: 회고 */}
-          <div className="md:col-span-2 mt-4" style={{ minHeight: "300px" }}>
-            <Reflection
-              initialReflections={initialReflections}
-              liveReflection={currentLiveReflection}
-              onReflectionProcessed={() => {
-                if (currentLiveReflection) {
-                  // 처리 완료된 ID 기록
-                  setProcessedReflectionIds((prev) => {
-                    const next = new Set(prev)
-                    next.add(currentLiveReflection.reflectionId)
-                    return next
-                  })
-                  // 처리된 데이터 제거
-                  removeReflectionData(currentLiveReflection.reflectionId)
-                }
-              }}
-            />
+          {/* 두 번째 row: 목표 & 회고를 좌우 반반 배치 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-2">
+            {/* 목표 */}
+            <div className="h-full">
+              {roomInfo && <GoalsList roomId={roomInfo.roomId} roomStatus={roomInfo.status} />}
+            </div>
+
+            {/* 회고 */}
+            <div className="min-h-[300px]">
+              <Reflection
+                initialReflections={initialReflections}
+                liveReflection={currentLiveReflection}
+                onReflectionProcessed={() => {
+                  if (currentLiveReflection) {
+                    // 처리 완료된 ID 기록
+                    setProcessedReflectionIds((prev) => {
+                      const next = new Set(prev)
+                      next.add(currentLiveReflection.reflectionId)
+                      return next
+                    })
+                    // 처리된 데이터 제거
+                    removeReflectionData(currentLiveReflection.reflectionId)
+                  }
+                }}
+              />
+            </div>
           </div>
+
+          {/* 채팅 (토글) */}
+          {isChatVisible && (
+            <div className="md:absolute md:right-0 md:top-0 md:w-80 md:h-[600px] md:z-20 relative">
+              {/* X 버튼 */}
+              <button
+                onClick={() => setIsChatVisible(false)}
+                className="absolute top-2 right-2 z-30 p-1.5 rounded-full bg-white/80 backdrop-blur-sm border border-white/60 shadow-sm hover:bg-white transition-colors"
+                aria-label="채팅창 닫기"
+              >
+                <X className="w-4 h-4 text-black/70" />
+              </button>
+              <div className="h-full flex flex-col rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)]">
+                <LiquidChat
+                  messages={liquidChatMessages}
+                  currentUserName={currentUser?.nickname || participants[0]?.nickname || "사용자"}
+                  onSend={(message: string) => {
+                    if (currentUser?.id) {
+                      sendChatMessage(message, currentUser.id)
+                    }
+                  }}
+                  onLoadMore={handleLoadMore}
+                  hasMore={hasMoreMessages}
+                  isLoadingMore={isLoadingMessages}
+                  isInitialLoadComplete={isInitialLoadComplete}
+                />
+              </div>
+            </div>
+          )}
+
         </main>
       </div>
 

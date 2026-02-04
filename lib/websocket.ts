@@ -682,31 +682,20 @@ export class StudyRoomWebSocket {
   /**
    * 채팅 메시지 전송
    */
-  sendChatMessage(content: string): void {
+  sendChatMessage(content: string, userId: number): void {
     if (!this.client || !this.isConnected || !this.roomId) {
       console.warn('WebSocket이 연결되지 않았습니다.')
       return
     }
 
-    // 현재 사용자 ID 가져오기
-    const userStr = localStorage.getItem('user')
-    if (!userStr) {
-      console.warn('사용자 정보가 없습니다.')
-      return
-    }
-
-    let senderId: number
-    try {
-      const userData = JSON.parse(userStr)
-      senderId = userData.id
-    } catch (error) {
-      console.error('사용자 정보 파싱 실패:', error)
+    if (!userId) {
+      console.warn('사용자 ID가 없습니다.')
       return
     }
 
     const token = localStorage.getItem('accessToken')
     const payload: SendMessageRequest = {
-      senderId,
+      senderId: userId,
       content,
     }
 

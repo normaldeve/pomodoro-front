@@ -275,8 +275,7 @@ export function LiquidChat({
       className="flex flex-col rounded-3xl w-full h-full min-h-0"
       style={{
         overflow: "hidden",
-        background:
-          "linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.45), rgba(255,255,255,0.25))",
+        backgroundColor: "#fff8ea",
         backdropFilter: "blur(30px) saturate(180%)",
         boxShadow:
           "0 20px 60px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8)",

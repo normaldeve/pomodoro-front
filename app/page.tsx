@@ -1077,7 +1077,7 @@ function HomePageInner() {
                 <button
                   type="button"
                   onClick={() => setTimerType(TimerType.POMODORO)}
-                  className={`group relative rounded-2xl p-3 flex flex-col items-center gap-2 min-h-[140px] transition-all ${
+                  className={`group relative rounded-2xl p-3 flex flex-col items-center gap-2 min-h-[110px] transition-all ${
                     timerType === TimerType.POMODORO
                       ? "ring-2 ring-[#2c5f2d] bg-[#c5d4c0]/30"
                       : "ring-1 ring-black/5 bg-white/70 hover:bg-white"
@@ -1116,12 +1116,12 @@ function HomePageInner() {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="flex-1 flex items-center justify-center w-full">
-                    <div className="scale-50 origin-center pointer-events-none">
+                  <div className="flex items-center justify-center w-full flex-1 pt-2">
+                    <div className="scale-[0.4] origin-center pointer-events-none">
                       <PomodoroDialStatic minutes={25} />
                     </div>
                   </div>
-                  <span className="mt-auto pb-1 text-xs font-medium text-[#111827]">
+                  <span className="text-xs font-medium text-[#111827] pb-1">
                     뽀모도로 타이머
                   </span>
                 </button>
@@ -1130,7 +1130,7 @@ function HomePageInner() {
                 <button
                   type="button"
                   onClick={() => setTimerType(TimerType.FLIP)}
-                  className={`group relative rounded-2xl p-3 flex flex-col items-center gap-2 min-h-[140px] transition-all ${
+                  className={`group relative rounded-2xl p-3 flex flex-col items-center gap-2 min-h-[110px] transition-all ${
                     timerType === TimerType.FLIP
                       ? "ring-2 ring-[#2c5f2d] bg-[#c5d4c0]/30"
                       : "ring-1 ring-black/5 bg-white/70 hover:bg-white"
@@ -1169,12 +1169,12 @@ function HomePageInner() {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="flex-1 flex items-center justify-center w-full">
-                    <div className="scale-50 origin-center pointer-events-none">
+                  <div className="flex items-center justify-center w-full flex-1 pt-2">
+                    <div className="scale-[0.4] origin-center pointer-events-none">
                       <FlipTimerStatic seconds={25 * 60} preview />
                     </div>
                   </div>
-                  <span className="mt-auto pb-1 text-xs font-medium text-[#111827]">
+                  <span className="text-xs font-medium text-[#111827] pb-1">
                     플립 타이머
                   </span>
                 </button>

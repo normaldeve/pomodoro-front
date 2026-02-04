@@ -345,10 +345,10 @@ export function useStudyRoomWebSocket(roomId: number | null) {
   }, [roomId])
 
   // 채팅 메시지 전송
-  const sendChatMessage = useCallback((content: string) => {
-    if (!wsRef.current || !roomId) return
+  const sendChatMessage = useCallback((content: string, userId: number) => {
+    if (!wsRef.current || !roomId || !userId) return
 
-    wsRef.current.sendChatMessage(content)
+    wsRef.current.sendChatMessage(content, userId)
   }, [roomId])
 
   // 방 참여 요청 전송

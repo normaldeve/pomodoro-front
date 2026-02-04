@@ -199,14 +199,14 @@ function SessionSummaryPageInner() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center p-6 md:p-10"
+      className="min-h-screen flex items-stretch justify-center p-6 md:p-10"
       style={{
         backgroundColor: "#fff8ea",
         transition: "opacity 0.5s ease-in",
         opacity: isLoaded ? 1 : 0,
       }}
     >
-      <div className="relative z-10 w-full max-w-4xl">
+      <div className="relative z-10 flex w-full max-w-3xl flex-col">
         {/* 오늘 공부한 시간 - 가장 위 */}
         <section
           className="mb-6 rounded-3xl bg-gradient-to-br from-white/80 via-white/65 to-white/45 backdrop-blur-3xl border border-white/70 shadow-[0_20px_60px_rgba(0,0,0,0.14)] px-8 py-10 transition-all duration-700 ease-out"
@@ -217,14 +217,14 @@ function SessionSummaryPageInner() {
         >
           <div className="flex items-center justify-center gap-3 mb-4">
             <Clock className="w-6 h-6" style={{ color: colors.main }} />
-            <h2 className="text-xl font-semibold font-sans" style={{ color: colors.text }}>
+            <h2 className="text-lg font-semibold font-sans" style={{ color: colors.text }}>
               오늘의 학습 시간
             </h2>
           </div>
           
           {/* 학습 시간만 중앙에 표시 */}
           <div className="flex items-center justify-center mb-2 py-4">
-            <div className="text-6xl font-bold font-sans tabular-nums transition-all duration-300" style={{ color: colors.main }}>
+            <div className="text-5xl font-bold font-sans tabular-nums transition-all duration-300" style={{ color: colors.main }}>
               {formatTime(displayedTime)}
             </div>
           </div>
@@ -247,10 +247,10 @@ function SessionSummaryPageInner() {
                 boxShadow: `0 0 10px ${colors.shadow}`,
               }}
             />
-            <h2 className="text-lg font-semibold font-sans" style={{ color: colors.text }}>
+            <h2 className="text-base font-semibold font-sans" style={{ color: colors.text }}>
               오늘의 목표
             </h2>
-            <span className="text-sm font-sans ml-auto" style={{ color: colors.textLight }}>
+            <span className="text-xs font-sans ml-auto" style={{ color: colors.textLight }}>
               달성률 {completionRate}%
             </span>
           </div>
@@ -258,13 +258,13 @@ function SessionSummaryPageInner() {
           <div className="space-y-4">
             {isLoading ? (
               <div className="flex items-center justify-center py-4">
-                <div className="text-sm font-sans" style={{ color: colors.textLight }}>
+                <div className="text-xs font-sans" style={{ color: colors.textLight }}>
                   로딩 중...
                 </div>
               </div>
             ) : goals.length === 0 ? (
               <div className="flex items-center justify-center py-4">
-                <div className="text-sm font-sans" style={{ color: colors.textLight }}>
+                <div className="text-xs font-sans" style={{ color: colors.textLight }}>
                   등록된 목표가 없습니다
                 </div>
               </div>
@@ -275,7 +275,7 @@ function SessionSummaryPageInner() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <CheckCircle2 className="w-4 h-4" style={{ color: colors.main }} />
-                      <span className="text-sm font-medium font-sans" style={{ color: colors.text }}>
+                      <span className="text-xs font-medium font-sans" style={{ color: colors.text }}>
                         달성한 목표 ({completedGoals.length}개)
                       </span>
                     </div>
@@ -293,7 +293,7 @@ function SessionSummaryPageInner() {
                         >
                           <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: colors.main }} />
                           <span
-                            className="text-sm font-sans line-through"
+                            className="text-xs font-sans line-through"
                             style={{ color: "#6b7280" }} // 완료된 목표는 회색 + 취소선
                           >
                             {goal.text}
@@ -309,7 +309,7 @@ function SessionSummaryPageInner() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Circle className="w-4 h-4" style={{ color: colors.textLight }} />
-                      <span className="text-sm font-medium font-sans" style={{ color: colors.textLight }}>
+                      <span className="text-xs font-medium font-sans" style={{ color: colors.textLight }}>
                         달성하지 못한 목표 ({uncompletedGoals.length}개)
                       </span>
                     </div>
@@ -327,7 +327,7 @@ function SessionSummaryPageInner() {
                         >
                           <Circle className="w-4 h-4 flex-shrink-0" style={{ color: colors.textLight }} />
                           <span
-                            className="text-sm font-sans"
+                            className="text-xs font-sans"
                             style={{ color: "#111827" }} // 미완료 목표 텍스트는 검정색
                           >
                             {goal.text}
@@ -351,17 +351,17 @@ function SessionSummaryPageInner() {
           }}
         >
           <div className="mb-4">
-            <h2 className="text-lg font-semibold font-sans" style={{ color: colors.text }}>
+            <h2 className="text-base font-semibold font-sans" style={{ color: colors.text }}>
               함께 공부한 친구들의 회고
             </h2>
-            <p className="text-sm font-sans mt-1" style={{ color: colors.textLight }}>
+            <p className="text-xs font-sans mt-1" style={{ color: colors.textLight }}>
               같은 세션 동안 공부한 사람들의 회고를 확인해보세요
             </p>
           </div>
           <div>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="text-sm font-sans" style={{ color: colors.textLight }}>
+                <div className="text-xs font-sans" style={{ color: colors.textLight }}>
                   로딩 중...
                 </div>
               </div>
@@ -380,7 +380,7 @@ function SessionSummaryPageInner() {
           }}
         >
           <div
-            className="text-3xl font-bold font-sans mb-2 transition-all duration-500"
+            className="text-2xl font-bold font-sans mb-2 transition-all duration-500"
             style={{
               color: colors.main,
               transform: showSection4 ? "scale(1)" : "scale(0.8)",
@@ -388,13 +388,13 @@ function SessionSummaryPageInner() {
           >
             🎉 수고하셨습니다! 🎉
           </div>
-          <p className="text-base font-sans mb-6" style={{ color: "#111827" }}>
+          <p className="text-sm font-sans mb-6" style={{ color: "#111827" }}>
             오늘도 정말 열심히 공부하셨군요, 정말 대단해요!
             <br />
           </p>
           <button
             onClick={() => router.push("/")}
-            className="px-8 py-3 rounded-full font-sans font-medium text-base transition-all duration-300 hover:scale-105"
+            className="px-8 py-3 rounded-full font-sans font-medium text-sm transition-all duration-300 hover:scale-105"
             style={{
               background: colors.main,
               color: "white",
