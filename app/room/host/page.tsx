@@ -739,7 +739,7 @@ function HostRoomPageInner() {
         {/* 메인 콘텐츠 */}
         <main className="relative flex flex-col gap-4 md:gap-6">
           {/* 첫 번째 row: 타이머 - 한 줄 전체 사용 */}
-          <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-8 md:px-10 md:py-10 flex items-center justify-center overflow-hidden w-full">
+          <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-6 md:px-8 md:py-6 flex items-center justify-center overflow-hidden w-full">
             {roomInfo?.timerType === TimerType.FLIP ? (
               <div className="w-full max-w-full flex items-center justify-center scale-65 md:scale-75">
                 <FlipTimer

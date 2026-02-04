@@ -153,10 +153,10 @@ export function PomodoroTimer({
   const isExternalControl = effectiveTimerState !== null && effectiveTimerState !== undefined
 
   // 전체 다이얼 크기 (폭/높이) - 위아래/좌우 여유를 모두 넉넉하게 설정
-  const size = 420
+  const size = 320
   const center = size / 2
-  const radius = 130
-  const handleRadius = 12
+  const radius = 100
+  const handleRadius = 10
 
   // Calculate angle from minutes (0 at top, clockwise)
   const getAngleFromMinutes = (mins: number) => {
@@ -447,7 +447,7 @@ export function PomodoroTimer({
   for (const minute of labelMinutes) {
     const angle = (minute / 60) * 360 - 90
     const rad = (angle * Math.PI) / 180
-    const numberRadius = radius + 45
+    const numberRadius = radius + 35
 
     const x = Math.round((center + numberRadius * Math.cos(rad)) * 100) / 100
     const y = Math.round((center + numberRadius * Math.sin(rad)) * 100) / 100
@@ -460,7 +460,7 @@ export function PomodoroTimer({
         textAnchor="middle"
         dominantBaseline="middle"
         fill={colors.text}
-        fontSize="16"
+        fontSize="14"
         fontWeight="500"
         className="font-sans select-none"
       >
@@ -470,7 +470,7 @@ export function PomodoroTimer({
   }
 
   return (
-    <div className="flex flex-col items-center gap-8 relative w-full">
+    <div className="flex flex-col items-center gap-4 relative w-full">
       {/* 오른쪽 상단 톱니바퀴 아이콘 및 토글 메뉴 - 쉬는 시간 중에만 표시 (방장용), 종료 시 숨김 */}
       {!disabled && isExternalControl && effectiveTimerState && currentPhase === 'BREAK' && !isFinished && !isEditingNextFocus && (
         <div className="absolute top-0 right-0 flex flex-col items-end gap-2">
@@ -592,11 +592,11 @@ export function PomodoroTimer({
 
       {/* Time display */}
       <div
-        className="text-6xl font-bold font-sans tabular-nums"
+        className="text-4xl font-bold font-sans tabular-nums"
         style={{ color: colors.text }}
       >
         {displayMinutes.toString().padStart(2, "0")}
-        <span className="text-4xl">:</span>
+        <span className="text-3xl">:</span>
         {displaySeconds.toString().padStart(2, "0")}
       </div>
 
@@ -605,7 +605,7 @@ export function PomodoroTimer({
         <div className="flex gap-4">
           <button
             onClick={toggleTimer}
-            className="px-8 py-3 rounded-full font-sans font-medium text-lg transition-all duration-300 hover-lift"
+            className="px-6 py-2.5 rounded-full font-sans font-medium text-base transition-all duration-300 hover-lift"
             style={{
               background: isRunning ? colors.buttonBgLight : colors.buttonBg,
               color: isRunning ? colors.text : "white",
@@ -618,7 +618,7 @@ export function PomodoroTimer({
           </button>
           <button
             onClick={resetTimer}
-            className="px-8 py-3 rounded-full font-sans font-medium text-lg transition-all duration-300 hover-lift"
+            className="px-6 py-2.5 rounded-full font-sans font-medium text-base transition-all duration-300 hover-lift"
             style={{
               background: "rgba(255, 255, 255, 0.2)",
               color: colors.text,
@@ -640,7 +640,7 @@ export function PomodoroTimer({
               onNextFocusMinutesSet?.(editingMinutes)
               setIsEditingNextFocus(false)
             }}
-            className="px-8 py-3 rounded-full font-sans font-medium text-lg transition-all duration-300 hover-lift flex items-center justify-center"
+            className="px-6 py-2.5 rounded-full font-sans font-medium text-base transition-all duration-300 hover-lift flex items-center justify-center"
             style={{
               background: colors.buttonBg,
               color: "white",
@@ -658,7 +658,7 @@ export function PomodoroTimer({
               const defaultFocus = Math.floor(effectiveTimerState.phaseDurationSeconds / 60) || 25
               setEditingMinutes(defaultFocus)
             }}
-            className="px-8 py-3 rounded-full font-sans font-medium text-lg transition-all duration-300 hover-lift flex items-center justify-center"
+            className="px-6 py-2.5 rounded-full font-sans font-medium text-base transition-all duration-300 hover-lift flex items-center justify-center"
             style={{
               background: "rgba(255, 255, 255, 0.2)",
               color: colors.text,
@@ -683,7 +683,7 @@ export function PomodoroTimer({
                 onResume?.()
               }
             }}
-            className="px-8 py-3 rounded-full font-sans font-medium text-lg transition-all duration-300 hover-lift flex items-center justify-center"
+            className="px-6 py-2.5 rounded-full font-sans font-medium text-base transition-all duration-300 hover-lift flex items-center justify-center"
             style={{
               background: effectiveTimerState.running ? colors.buttonBgLight : colors.buttonBg,
               color: effectiveTimerState.running ? colors.text : "white",
