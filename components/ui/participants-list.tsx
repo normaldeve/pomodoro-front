@@ -1,7 +1,8 @@
 "use client"
 
-import { Crown } from "lucide-react"
+import { Crown, UserCheck } from "lucide-react"
 import { StudyRoomMemberResponse, RoomMemberRole } from "@/lib/api"
+import { Button } from "@/components/ui/button"
 
 const colors = {
   // 시스템 primary 그린 팔레트
@@ -14,9 +15,22 @@ const colors = {
 export interface ParticipantsListProps {
   participants: StudyRoomMemberResponse[]
   isLoading?: boolean
+  /**
+   * 현재 사용자가 방장인지 여부
+   */
+  isHost?: boolean
+  /**
+   * 방장 권한 위임 콜백 (userId를 인자로 받음)
+   */
+  onTransferHost?: (userId: number) => void
 }
 
-export function ParticipantsList({ participants, isLoading = false }: ParticipantsListProps) {
+export function ParticipantsList({ 
+  participants, 
+  isLoading = false,
+  isHost = false,
+  onTransferHost
+}: ParticipantsListProps) {
   return (
     <aside className="hidden md:block">
       <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-5 py-6 flex flex-col gap-4 h-full">
@@ -55,26 +69,26 @@ export function ParticipantsList({ participants, isLoading = false }: Participan
                   backdropFilter: "blur(18px) saturate(180%)",
                 }}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                   {p.profileUrl ? (
                     <img
                       src={p.profileUrl}
                       alt={p.nickname}
-                      className="w-7 h-7 rounded-full border border-white/80 shadow-[0_0_0_1px_rgba(0,0,0,0.02)] object-cover"
+                      className="w-7 h-7 rounded-full border border-white/80 shadow-[0_0_0_1px_rgba(0,0,0,0.02)] object-cover flex-shrink-0"
                     />
                   ) : (
                     <div
-                      className="w-7 h-7 rounded-full border border-white/80 shadow-[0_0_0_1px_rgba(0,0,0,0.02)]"
+                      className="w-7 h-7 rounded-full border border-white/80 shadow-[0_0_0_1px_rgba(0,0,0,0.02)] flex-shrink-0"
                       style={{ backgroundColor: "#c5d4c0" }}
                     />
                   )}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-medium font-sans" style={{ color: colors.text }}>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-medium font-sans truncate" style={{ color: colors.text }}>
                       {p.nickname}
                     </span>
                     {p.role === RoomMemberRole.HOST && (
                       <Crown
-                        className="w-3.5 h-3.5"
+                        className="w-3.5 h-3.5 flex-shrink-0"
                         style={{
                           color: "#fbbf24",
                           fill: "#fbbf24",
@@ -83,6 +97,25 @@ export function ParticipantsList({ participants, isLoading = false }: Participan
                     )}
                   </div>
                 </div>
+                {/* 방장 권한 위임 버튼 (방장이고, 해당 참여자가 방장이 아닐 때만 표시) */}
+                {isHost && p.role !== RoomMemberRole.HOST && onTransferHost && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-[10px] flex-shrink-0 text-black hover:text-black"
+                    onClick={() => onTransferHost(p.userId)}
+                    title={`${p.nickname}님에게 방장 권한 위임`}
+                  >
+                    <Crown
+                      className="w-3.5 h-3.5 mr-1"
+                      style={{
+                        color: "#000000",
+                        fill: "#000000",
+                      }}
+                    />
+                    방장 위임
+                  </Button>
+                )}
               </div>
             ))
           )}

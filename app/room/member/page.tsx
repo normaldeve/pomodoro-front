@@ -19,7 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { getStudyRoomMembers, StudyRoomMemberResponse, getStudyRoom, getMessages, RoomMemberRole, getRoomReflections, ReflectionResponse } from "@/lib/api"
+import { getStudyRoomMembers, StudyRoomMemberResponse, getStudyRoom, getMessages, RoomMemberRole, getRoomReflections, ReflectionResponse, getCurrentUser } from "@/lib/api"
 import { getStatusText, getStatusColor } from "@/lib/utils"
 import { ParticipantsList } from "@/components/ui/participants-list"
 import { parseMessageTimestamp } from "@/lib/utils"
@@ -67,7 +67,7 @@ function MemberRoomPageInner() {
   const [soundEnabled, setSoundEnabledState] = useState(true)
 
   // WebSocket 연결
-  const { statusMessage, timerState, dialMinutes, sendChatMessage, chatMessages, newMember, exitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData } = useStudyRoomWebSocket(roomInfo?.roomId || null)
+  const { statusMessage, timerState, dialMinutes, sendChatMessage, chatMessages, newMember, exitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData, hostTransferredEvent } = useStudyRoomWebSocket(roomInfo?.roomId || null)
   const [currentUser, setCurrentUser] = useState<{ id: number; nickname: string } | null>(null)
   const [liquidChatMessages, setLiquidChatMessages] = useState<Array<{
     id: number
@@ -100,23 +100,62 @@ function MemberRoomPageInner() {
     imageUrl: string | null
     createdAt: Date
   } | null>(null)
+  const [isHostTransferredDialogOpen, setIsHostTransferredDialogOpen] = useState(false)
+  const [hostTransferredMessage, setHostTransferredMessage] = useState<string>("")
 
   // 소리 설정 로드
   useEffect(() => {
     setSoundEnabledState(isSoundEnabled())
   }, [])
 
+  // 방장 권한 위임 WebSocket 알림 처리
+  useEffect(() => {
+    if (!hostTransferredEvent || !currentUser) return
+
+    // participants 목록에서 HOST 역할 업데이트
+    setParticipants((prev) =>
+      prev.map((p) => {
+        if (p.userId === hostTransferredEvent.previousHostId) {
+          return { ...p, role: RoomMemberRole.MEMBER }
+        }
+        if (p.userId === hostTransferredEvent.newHostId) {
+          return { ...p, role: RoomMemberRole.HOST }
+        }
+        return p
+      })
+    )
+
+    // 현재 사용자가 새 방장이 된 경우와 아닌 경우 메시지 분기
+    if (currentUser.id === hostTransferredEvent.newHostId) {
+      // 새 방장은 방장 화면으로 전환하면서, 알림 메시지는 세션 저장소에 저장
+      if (roomInfo?.roomId) {
+        const msg = "이제 당신이 새로운 방장입니다. 세션을 관리해 주세요!"
+        sessionStorage.setItem("hostTransferredRoomId", String(roomInfo.roomId))
+        sessionStorage.setItem("hostTransferredMessage", msg)
+        router.replace(`/room/host?roomId=${roomInfo.roomId}`)
+      }
+      return
+    } else if (currentUser.id === hostTransferredEvent.previousHostId) {
+      setHostTransferredMessage(`${hostTransferredEvent.newHostNickname}님에게 방장 권한이 위임되었습니다.`)
+    } else {
+      setHostTransferredMessage(
+        `${hostTransferredEvent.previousHostNickname}님에서 ${hostTransferredEvent.newHostNickname}님으로 방장이 변경되었어요.`
+      )
+    }
+
+    setIsHostTransferredDialogOpen(true)
+  }, [hostTransferredEvent, currentUser])
+
   // 현재 사용자 정보 로드
   useEffect(() => {
-    const userStr = localStorage.getItem("user")
-    if (userStr) {
+    ;(async () => {
       try {
-        const userData = JSON.parse(userStr)
-        setCurrentUser({ id: userData.id, nickname: userData.nickname })
+        const me = await getCurrentUser()
+        setCurrentUser({ id: me.id, nickname: me.nickname })
       } catch (error) {
-        console.error("사용자 정보 파싱 실패:", error)
+        console.error("현재 사용자 정보 로드 실패:", error)
       }
-    }
+    })()
   }, [])
 
   // 방 입장 시 이전 메시지 조회
@@ -464,69 +503,6 @@ function MemberRoomPageInner() {
     }
   }, [])
 
-  // 브라우저/탭 닫기 시 나가기 요청 전송
-  useEffect(() => {
-    if (!roomInfo?.roomId || !currentUser) return
-
-    let hasSentExit = false // 중복 전송 방지
-
-    const sendExitRequest = () => {
-      if (hasSentExit || isNavigatingToSummary.current) return
-      
-      try {
-        const userStr = localStorage.getItem("user")
-        if (userStr) {
-          const userData = JSON.parse(userStr)
-          sendMemberExit(userData.id)
-          hasSentExit = true
-        }
-      } catch (error) {
-        console.error("나가기 요청 전송 실패:", error)
-      }
-    }
-
-    // visibilitychange: 탭이 숨겨질 때 (다른 탭으로 전환, 브라우저 최소화 등)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        sendExitRequest()
-      }
-    }
-
-    // pagehide: 페이지가 숨겨질 때 (뒤로가기, 앞으로가기, 탭 닫기 등)
-    const handlePageHide = () => {
-      sendExitRequest()
-    }
-
-    // beforeunload: 브라우저/탭 닫기 직전
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isNavigatingToSummary.current) {
-        return
-      }
-
-      // 나가기 요청 전송 시도
-      sendExitRequest()
-
-      // 현재 방의 roomId를 세션 스토리지에 저장 (다음 로드 시 사용)
-      if (roomInfo?.roomId) {
-        sessionStorage.setItem("navigateToSessionSummaryRoomId", String(roomInfo.roomId))
-      }
-
-      // 브라우저 기본 새로고침 확인창 표시
-      e.preventDefault()
-      e.returnValue = ''
-    }
-
-    window.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('pagehide', handlePageHide)
-    window.addEventListener('beforeunload', handleBeforeUnload)
-
-    return () => {
-      window.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('pagehide', handlePageHide)
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-    }
-  }, [roomInfo?.roomId, currentUser, sendMemberExit])
-
   // 회고 생성 이벤트 수신 시 회고 다이얼로그 열기
   useEffect(() => {
     if (!reflectionEvent) return
@@ -785,19 +761,11 @@ function MemberRoomPageInner() {
                   setIsExitDialogOpen(false)
                   
                   // 현재 사용자 정보 가져오기
-                  const userStr = localStorage.getItem("user")
-                  if (userStr && currentUser) {
-                    try {
-                      const userData = JSON.parse(userStr)
-                      // 웹소켓으로 방 떠나기 요청 전송
-                      if (roomInfo?.roomId) {
-                        sendMemberExit(userData.id)
-                        // 요청 전송 후 약간의 지연을 두고 페이지 이동
-                        await new Promise(resolve => setTimeout(resolve, 100))
-                      }
-                    } catch (error) {
-                      console.error("사용자 정보 파싱 실패:", error)
-                    }
+                  if (currentUser && roomInfo?.roomId) {
+                    // 웹소켓으로 방 떠나기 요청 전송
+                    sendMemberExit(currentUser.id)
+                    // 요청 전송 후 약간의 지연을 두고 페이지 이동
+                    await new Promise(resolve => setTimeout(resolve, 100))
                   }
                   
                   isNavigatingToSummary.current = true
@@ -810,6 +778,7 @@ function MemberRoomPageInner() {
                   } else {
                     router.push("/session-summary")
                   }
+
                 }}
               >
                 나가기
@@ -824,7 +793,7 @@ function MemberRoomPageInner() {
         type="button"
         aria-label="방 나가기"
         onClick={() => setIsExitDialogOpen(true)}
-        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 flex h-16 w-16 md:h-18 md:w-18 flex-col items-center justify-center gap-1 rounded-full bg-primary text-white shadow-xl shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors text-[11px] md:text-xs font-medium"
+        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 flex h-16 w-16 md:h-18 md:w-18 flex-col items-center justify-center gap-1 rounded-full bg-primary text-white shadow-xl shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors text-[11px] md:text-xs font-medium cursor-pointer"
       >
         <DoorClosed className="h-5 w-5 md:h-6 md:w-6" />
         <span>나가기</span>
@@ -837,6 +806,35 @@ function MemberRoomPageInner() {
         onSubmit={handleReflectionSubmit}
         sessionNumber={currentReflectionSessionId ?? roomInfo?.currentSession}
       />
+
+      {/* 방장 변경 알림 다이얼로그 */}
+      <Dialog open={isHostTransferredDialogOpen} onOpenChange={setIsHostTransferredDialogOpen}>
+        <DialogContent className="max-w-sm p-6" showCloseButton={false}>
+          <div className="flex flex-col items-center gap-4">
+            <img
+              src="/images/home_icon.png"
+              alt="방장 변경 알림 아이콘"
+              className="w-20 h-20 object-contain"
+            />
+            <DialogHeader className="items-center text-center">
+              <DialogTitle className="text-lg font-semibold">
+                방장이 변경되었어요
+              </DialogTitle>
+              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+                {hostTransferredMessage}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="w-full flex justify-center mt-2">
+              <Button
+                className="w-full bg-primary hover:bg-primary/90"
+                onClick={() => setIsHostTransferredDialogOpen(false)}
+              >
+                확인
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 세션 종료 다이얼로그 */}
       <Dialog open={isSessionFinishedDialogOpen} onOpenChange={setIsSessionFinishedDialogOpen}>

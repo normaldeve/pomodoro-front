@@ -19,7 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { getStudyRoomMembers, StudyRoomMemberResponse, getStudyRoom, getMessages, RoomMemberRole, getRoomReflections, ReflectionResponse } from "@/lib/api"
+import { getStudyRoomMembers, StudyRoomMemberResponse, getStudyRoom, getMessages, RoomMemberRole, getRoomReflections, ReflectionResponse, transferHost, getCurrentUser } from "@/lib/api"
 import { getStatusText, getStatusColor } from "@/lib/utils"
 import { ParticipantsList } from "@/components/ui/participants-list"
 import { parseMessageTimestamp } from "@/lib/utils"
@@ -44,6 +44,11 @@ function HostRoomPageInner() {
   const [isWelcomeDialogOpen, setIsWelcomeDialogOpen] = useState(false)
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false)
   const [isSessionFinishedDialogOpen, setIsSessionFinishedDialogOpen] = useState(false)
+  const [isHostTransferredDialogOpen, setIsHostTransferredDialogOpen] = useState(false)
+  const [hostTransferredMessage, setHostTransferredMessage] = useState<string>("")
+  const [isTransferHostDialogOpen, setIsTransferHostDialogOpen] = useState(false)
+  const [transferTargetUserId, setTransferTargetUserId] = useState<number | null>(null)
+  const [transferTargetNickname, setTransferTargetNickname] = useState<string>("")
   const [currentReflectionSessionId, setCurrentReflectionSessionId] = useState<number | null>(null)
   const isNavigatingToSummary = useRef(false)
   const hasShownFinishedDialog = useRef(false)
@@ -68,7 +73,7 @@ function HostRoomPageInner() {
   const [soundEnabled, setSoundEnabledState] = useState(true)
 
   // WebSocket 연결
-  const { sendDialDrag, sendTimerStart, sendTimerPause, sendTimerResume, sendNextFocusMinutes, statusMessage, timerState, sendChatMessage, chatMessages, newMember, exitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData } = useStudyRoomWebSocket(roomInfo?.roomId || null)
+  const { sendDialDrag, sendTimerStart, sendTimerPause, sendTimerResume, sendNextFocusMinutes, statusMessage, timerState, sendChatMessage, chatMessages, newMember, exitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData, hostTransferredEvent } = useStudyRoomWebSocket(roomInfo?.roomId || null)
   const [currentUser, setCurrentUser] = useState<{ id: number; nickname: string } | null>(null)
   const [liquidChatMessages, setLiquidChatMessages] = useState<Array<{
     id: number
@@ -107,17 +112,67 @@ function HostRoomPageInner() {
     setSoundEnabledState(isSoundEnabled())
   }, [])
 
+  // 멤버 페이지에서 방장으로 전환된 경우, 세션 저장소에 저장된 메시지로 알림 표시
+  useEffect(() => {
+    if (!roomInfo?.roomId) return
+
+    const storedRoomId = sessionStorage.getItem("hostTransferredRoomId")
+    const storedMessage = sessionStorage.getItem("hostTransferredMessage")
+
+    if (storedRoomId && storedMessage && String(roomInfo.roomId) === storedRoomId) {
+      setHostTransferredMessage(storedMessage)
+      setIsHostTransferredDialogOpen(true)
+
+      // 한 번만 표시되도록 제거
+      sessionStorage.removeItem("hostTransferredRoomId")
+      sessionStorage.removeItem("hostTransferredMessage")
+    }
+  }, [roomInfo?.roomId])
+
+  // 방장 권한 위임 WebSocket 알림 처리
+  useEffect(() => {
+    if (!hostTransferredEvent || !currentUser) return
+
+    // participants 목록에서 HOST 역할 업데이트
+    setParticipants((prev) =>
+      prev.map((p) => {
+        if (p.userId === hostTransferredEvent.previousHostId) {
+          return { ...p, role: RoomMemberRole.MEMBER }
+        }
+        if (p.userId === hostTransferredEvent.newHostId) {
+          return { ...p, role: RoomMemberRole.HOST }
+        }
+        return p
+      })
+    )
+
+    // 현재 사용자가 새 방장이 된 경우는 멤버 페이지에서 처리하므로 여기서는 패스
+    if (currentUser.id === hostTransferredEvent.newHostId) {
+      return
+    }
+
+    // 그 외 사용자(이전 방장 포함)는 알림만 표시
+    if (currentUser.id === hostTransferredEvent.previousHostId) {
+      setHostTransferredMessage(`${hostTransferredEvent.newHostNickname}님에게 방장 권한이 위임되었습니다.`)
+    } else {
+      setHostTransferredMessage(
+        `${hostTransferredEvent.previousHostNickname}님에서 ${hostTransferredEvent.newHostNickname}님으로 방장이 변경되었어요.`
+      )
+    }
+
+    setIsHostTransferredDialogOpen(true)
+  }, [hostTransferredEvent, currentUser])
+
   // 현재 사용자 정보 로드
   useEffect(() => {
-    const userStr = localStorage.getItem("user")
-    if (userStr) {
+    ;(async () => {
       try {
-        const userData = JSON.parse(userStr)
-        setCurrentUser({ id: userData.id, nickname: userData.nickname })
+        const me = await getCurrentUser()
+        setCurrentUser({ id: me.id, nickname: me.nickname })
       } catch (error) {
-        console.error("사용자 정보 파싱 실패:", error)
+        console.error("현재 사용자 정보 로드 실패:", error)
       }
-    }
+    })()
   }, [])
 
   // 방 입장 시 이전 메시지 조회
@@ -476,69 +531,6 @@ function HostRoomPageInner() {
     }
   }, [])
 
-  // 브라우저/탭 닫기 시 나가기 요청 전송
-  useEffect(() => {
-    if (!roomInfo?.roomId || !currentUser) return
-
-    let hasSentExit = false // 중복 전송 방지
-
-    const sendExitRequest = () => {
-      if (hasSentExit || isNavigatingToSummary.current) return
-      
-      try {
-        const userStr = localStorage.getItem("user")
-        if (userStr) {
-          const userData = JSON.parse(userStr)
-          sendMemberExit(userData.id)
-          hasSentExit = true
-        }
-      } catch (error) {
-        console.error("나가기 요청 전송 실패:", error)
-      }
-    }
-
-    // visibilitychange: 탭이 숨겨질 때 (다른 탭으로 전환, 브라우저 최소화 등)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        sendExitRequest()
-      }
-    }
-
-    // pagehide: 페이지가 숨겨질 때 (뒤로가기, 앞으로가기, 탭 닫기 등)
-    const handlePageHide = () => {
-      sendExitRequest()
-    }
-
-    // beforeunload: 브라우저/탭 닫기 직전
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isNavigatingToSummary.current) {
-        return
-      }
-
-      // 나가기 요청 전송 시도
-      sendExitRequest()
-
-      // 현재 방의 roomId를 세션 스토리지에 저장 (다음 로드 시 사용)
-      if (roomInfo?.roomId) {
-        sessionStorage.setItem("navigateToSessionSummaryRoomId", String(roomInfo.roomId))
-      }
-
-      // 브라우저 기본 새로고침 확인창 표시
-      e.preventDefault()
-      e.returnValue = ''
-    }
-
-    window.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('pagehide', handlePageHide)
-    window.addEventListener('beforeunload', handleBeforeUnload)
-
-    return () => {
-      window.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('pagehide', handlePageHide)
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-    }
-  }, [roomInfo?.roomId, currentUser, sendMemberExit])
-
   // 회고 생성 이벤트 수신 시 회고 다이얼로그 열기
   useEffect(() => {
     if (!reflectionEvent) return
@@ -753,7 +745,19 @@ function HostRoomPageInner() {
           </div>
 
           {/* 첫 번째 row: 참여자 명단 */}
-          <ParticipantsList participants={participants} isLoading={isLoadingParticipants} />
+          <ParticipantsList 
+            participants={participants} 
+            isLoading={isLoadingParticipants}
+            isHost={true}
+            onTransferHost={(userId) => {
+              const targetParticipant = participants.find(p => p.userId === userId)
+              if (targetParticipant) {
+                setTransferTargetUserId(userId)
+                setTransferTargetNickname(targetParticipant.nickname)
+                setIsTransferHostDialogOpen(true)
+              }
+            }}
+          />
 
           {/* 두 번째 row: 목표 */}
           <div className="h-full">
@@ -870,19 +874,11 @@ function HostRoomPageInner() {
                   setIsExitDialogOpen(false)
                   
                   // 현재 사용자 정보 가져오기
-                  const userStr = localStorage.getItem("user")
-                  if (userStr && currentUser) {
-                    try {
-                      const userData = JSON.parse(userStr)
-                      // 웹소켓으로 방 떠나기 요청 전송
-                      if (roomInfo?.roomId) {
-                        sendMemberExit(userData.id)
-                        // 요청 전송 후 약간의 지연을 두고 페이지 이동
-                        await new Promise(resolve => setTimeout(resolve, 100))
-                      }
-                    } catch (error) {
-                      console.error("사용자 정보 파싱 실패:", error)
-                    }
+                  if (currentUser && roomInfo?.roomId) {
+                    // 웹소켓으로 방 떠나기 요청 전송
+                    sendMemberExit(currentUser.id)
+                    // 요청 전송 후 약간의 지연을 두고 페이지 이동
+                    await new Promise(resolve => setTimeout(resolve, 100))
                   }
                   
                   isNavigatingToSummary.current = true
@@ -895,6 +891,7 @@ function HostRoomPageInner() {
                   } else {
                     router.push("/session-summary")
                   }
+
                 }}
               >
                 나가기
@@ -909,7 +906,7 @@ function HostRoomPageInner() {
         type="button"
         aria-label="방 나가기"
         onClick={() => setIsExitDialogOpen(true)}
-        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 flex h-16 w-16 md:h-18 md:w-18 flex-col items-center justify-center gap-1 rounded-full bg-primary text-white shadow-xl shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors text-[11px] md:text-xs font-medium"
+        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 flex h-16 w-16 md:h-18 md:w-18 flex-col items-center justify-center gap-1 rounded-full bg-primary text-white shadow-xl shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors text-[11px] md:text-xs font-medium cursor-pointer"
       >
         <DoorClosed className="h-5 w-5 md:h-6 md:w-6" />
         <span>나가기</span>
@@ -922,6 +919,99 @@ function HostRoomPageInner() {
         onSubmit={handleReflectionSubmit}
         sessionNumber={currentReflectionSessionId ?? roomInfo?.currentSession}
       />
+
+      {/* 방장 변경 알림 다이얼로그 */}
+      <Dialog open={isHostTransferredDialogOpen} onOpenChange={setIsHostTransferredDialogOpen}>
+        <DialogContent className="max-w-sm p-6" showCloseButton={false}>
+          <div className="flex flex-col items-center gap-4">
+            <img
+              src="/images/home_icon.png"
+              alt="방장 변경 알림 아이콘"
+              className="w-20 h-20 object-contain"
+            />
+            <DialogHeader className="items-center text-center">
+              <DialogTitle className="text-lg font-semibold">
+                방장이 변경되었어요
+              </DialogTitle>
+              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+                {hostTransferredMessage}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="w-full flex justify-center mt-2">
+              <Button
+                className="w-full bg-primary hover:bg-primary/90"
+                onClick={() => setIsHostTransferredDialogOpen(false)}
+              >
+                확인
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 방장 권한 위임 다이얼로그 */}
+      <Dialog open={isTransferHostDialogOpen} onOpenChange={setIsTransferHostDialogOpen}>
+        <DialogContent className="max-w-sm p-6" showCloseButton={false}>
+          <div className="flex flex-col items-center gap-4">
+            <img
+              src="/images/home_icon.png"
+              alt="방장 권한 위임 아이콘"
+              className="w-20 h-20 object-contain"
+            />
+            <DialogHeader className="items-center text-center">
+              <DialogTitle className="text-lg font-semibold">
+                방장 권한을 위임하시겠어요?
+              </DialogTitle>
+              <DialogDescription className="text-sm text-black/70 mt-1 text-center">
+                {transferTargetNickname}님에게 방장 권한을 위임하면
+                <br />
+                더 이상 방을 관리할 수 없어요.
+                <br />
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="w-full flex justify-center gap-2 mt-2">
+              <Button
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800"
+                onClick={() => {
+                  setIsTransferHostDialogOpen(false)
+                  setTransferTargetUserId(null)
+                  setTransferTargetNickname("")
+                }}
+              >
+                취소
+              </Button>
+              <Button
+                className="flex-1 bg-primary hover:bg-primary/90"
+                onClick={async () => {
+                  if (!roomInfo?.roomId || !transferTargetUserId) {
+                    setIsTransferHostDialogOpen(false)
+                    setTransferTargetUserId(null)
+                    setTransferTargetNickname("")
+                    return
+                  }
+
+                  try {
+                    await transferHost(roomInfo.roomId, transferTargetUserId)
+
+                    // 성공 시 다이얼로그 닫기 및 상태 초기화
+                    setIsTransferHostDialogOpen(false)
+                    setTransferTargetUserId(null)
+                    setTransferTargetNickname("")
+                    // 이전 방장은 멤버 화면으로 전환 (방을 완전히 나가는 것이 아님)
+                    // beforeunload/pagehide 핸들러에서 exit 전송을 막기 위해 플래그 설정
+                    isNavigatingToSummary.current = true
+                    router.replace(`/room/member?roomId=${roomInfo.roomId}`)
+                  } catch (error) {
+                    console.error("방장 권한 위임 실패:", error)
+                  }
+                }}
+              >
+                위임하기
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 세션 종료 다이얼로그 */}
       <Dialog open={isSessionFinishedDialogOpen} onOpenChange={setIsSessionFinishedDialogOpen}>

@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { StudyRoomWebSocket, DialDragMessage, TimerState, TimerStartRequest, MessageResponse, ParticipantMemberInfo, EnterStudyRoomRequest, RoomStatus, RoomStateResponse, ReflectionEvent, ReflectionNotificationEvent } from '@/lib/websocket'
+import { StudyRoomWebSocket, DialDragMessage, TimerState, TimerStartRequest, MessageResponse, ParticipantMemberInfo, EnterStudyRoomRequest, RoomStatus, RoomStateResponse, ReflectionEvent, ReflectionNotificationEvent, HostTransferredEvent } from '@/lib/websocket'
 import { playNotificationSound } from '@/lib/sound-notification'
 
 export function useStudyRoomWebSocket(roomId: number | null) {
@@ -22,6 +22,7 @@ export function useStudyRoomWebSocket(roomId: number | null) {
   const [finishSession, setFinishSession] = useState<RoomStatus | null>(null)
   const [reflectionEvent, setReflectionEvent] = useState<ReflectionNotificationEvent | null>(null)
   const [reflectionData, setReflectionData] = useState<ReflectionEvent[]>([])
+  const [hostTransferredEvent, setHostTransferredEvent] = useState<HostTransferredEvent | null>(null)
   const previousRunningStateRef = useRef<boolean | null>(null)
   const previousPhaseRef = useRef<string | null>(null)
   const isFirstFocusTickRef = useRef<boolean>(false)
@@ -176,6 +177,14 @@ export function useStudyRoomWebSocket(roomId: number | null) {
   handleReflectionEventRef.current = handleReflectionEvent
   handleReflectionDataRef.current = handleReflectionData
 
+  // 방장 권한 위임 알림 처리
+  const handleHostTransferred = useCallback((event: HostTransferredEvent) => {
+    setHostTransferredEvent(event)
+  }, [])
+
+  const handleHostTransferredRef = useRef<(event: HostTransferredEvent) => void | undefined>(undefined)
+  handleHostTransferredRef.current = handleHostTransferred
+
   // 방 상태 변경 메시지 처리
   const handleRoomStatus = useCallback((status: RoomStatus) => {
     setRoomStatus(status)
@@ -272,6 +281,10 @@ export function useStudyRoomWebSocket(roomId: number | null) {
       (event: ReflectionEvent) => {
         // ref를 통해 최신 콜백 호출 (실제 회고 데이터)
         handleReflectionDataRef.current?.(event)
+      },
+      (event: HostTransferredEvent) => {
+        // 방장 권한 위임 알림
+        handleHostTransferredRef.current?.(event)
       }
     )
       .then(() => {
@@ -392,5 +405,6 @@ export function useStudyRoomWebSocket(roomId: number | null) {
     reflectionEvent,
     reflectionData,
     removeReflectionData,
+    hostTransferredEvent,
   }
 }

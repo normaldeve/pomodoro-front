@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense, useCallback } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -18,8 +19,7 @@ const PomodoroDialStatic = dynamic(() => import("@/components/ui/pomodoro-dial-s
 const FlipTimerStatic = dynamic(() => import("@/components/ui/flip-timer-static").then((mod) => mod.FlipTimerStatic), {
   ssr: false,
 })
-import { DoorOpen, Plus, Search, User, Lock, X, Trophy, HelpCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { DoorOpen, Plus, Search, User, Lock, X, Trophy, HelpCircle, Clock, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react"
 // Popover는 필요할 때만 로드
 const Popover = dynamic(() => import("@/components/ui/popover").then((mod) => mod.Popover), { ssr: false })
 const PopoverContent = dynamic(() => import("@/components/ui/popover").then((mod) => mod.PopoverContent), { ssr: false })
@@ -36,7 +36,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { logoutApi, createStudyRoom, ApiError, getStudyRooms, StudyRoomListResponse, StudyRoomStatus, TimerType } from "@/lib/api"
+import { logoutApi, createStudyRoom, ApiError, getStudyRooms, StudyRoomListResponse, StudyRoomStatus, TimerType, getCurrentUser, getParticipateRoomInfo } from "@/lib/api"
 import { showSuccessNotification } from "@/lib/system-notification"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
@@ -104,8 +104,9 @@ function mapToStudyRoom(response: StudyRoomListResponse): StudyRoom {
   }
 }
 
-export default function HomePage() {
+function HomePageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoggedIn, setIsLoggedIn] = useState(false) // 로그인 상태 관리
   const [user, setUser] = useState<{ id: number; username: string; nickname: string; profileUrl: string | null; role: string } | null>(null) // 사용자 정보
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false) // 로그인 모달 상태
@@ -188,49 +189,74 @@ export default function HomePage() {
 
   // 페이지 로드 시 로그인 상태 복원
   useEffect(() => {
-    // localStorage에서 accessToken과 user 정보 확인
+    // localStorage에서 accessToken 확인 후 /api/auth/me 로 사용자 정보 조회
     const accessToken = localStorage.getItem("accessToken")
-    const userStr = localStorage.getItem("user")
     
-    if (accessToken && userStr) {
-      try {
-        const userData = JSON.parse(userStr)
-        // accessToken과 user 정보가 모두 있으면 로그인 상태로 복원
-        if (userData) {
+    if (accessToken) {
+      ;(async () => {
+        try {
+          const me = await getCurrentUser()
           setIsLoggedIn(true)
-          setUser(userData)
+          setUser(me)
+        } catch (error) {
+          console.error("Failed to restore user from token:", error)
+          localStorage.removeItem("accessToken")
         }
-      } catch (error) {
-        // JSON 파싱 실패 시 localStorage 정리
-        console.error("Failed to parse user data:", error)
-        localStorage.removeItem("accessToken")
-        localStorage.removeItem("user")
-      }
+      })()
     }
   }, [])
 
-  // 스터디룸 목록 조회
+  // roomId 쿼리 파라미터 확인 및 로그인 필요 다이얼로그 표시
   useEffect(() => {
-    const fetchStudyRooms = async () => {
-      setIsLoadingRooms(true)
-      try {
-        const response = await getStudyRooms(currentPage)
-        const rooms = response.content.map(mapToStudyRoom)
-        setStudyRooms(rooms)
-        setTotalPages(response.totalPages)
-        setTotalRooms(response.totalElements)
-      } catch (error) {
-        console.error("Failed to fetch study rooms:", error)
-        setStudyRooms([])
-        setTotalPages(0)
-        setTotalRooms(0)
-      } finally {
-        setIsLoadingRooms(false)
-      }
+    const roomIdParam = searchParams.get("roomId")
+    if (roomIdParam && !isLoggedIn) {
+      // roomId가 있고 로그인하지 않았으면 로그인 필요 다이얼로그 표시
+      setIsLoginRequiredDialogOpen(true)
     }
+  }, [searchParams, isLoggedIn])
 
-    fetchStudyRooms()
+  // 마지막으로 참여한 방이 있다면 자동 복귀 (백엔드 API 기반)
+  useEffect(() => {
+    if (!isLoggedIn) return
+
+    // 이미 특정 roomId로 진입하려는 경우에는 자동 복귀 스킵
+    const roomIdParam = searchParams.get("roomId")
+    if (roomIdParam) return
+
+    ;(async () => {
+      try {
+        const info = await getParticipateRoomInfo()
+        if (!info || !info.lastRoomId) return
+
+        router.replace(`/room?roomId=${info.lastRoomId}`)
+      } catch (error) {
+        console.error("Failed to redirect to participate room:", error)
+      }
+    })()
+  }, [isLoggedIn, searchParams, router])
+
+  // 스터디룸 목록 조회
+  const fetchStudyRooms = useCallback(async () => {
+    setIsLoadingRooms(true)
+    try {
+      const response = await getStudyRooms(currentPage)
+      const rooms = response.content.map(mapToStudyRoom)
+      setStudyRooms(rooms)
+      setTotalPages(response.totalPages)
+      setTotalRooms(response.totalElements)
+    } catch (error) {
+      console.error("Failed to fetch study rooms:", error)
+      setStudyRooms([])
+      setTotalPages(0)
+      setTotalRooms(0)
+    } finally {
+      setIsLoadingRooms(false)
+    }
   }, [currentPage])
+
+  useEffect(() => {
+    fetchStudyRooms()
+  }, [fetchStudyRooms])
 
   // 로딩 애니메이션 효과
   useEffect(() => {
@@ -284,7 +310,7 @@ export default function HomePage() {
                 color: "#2c5f2d",
               }}
             >
-              뽀모뽀모
+              뽀개더
             </span>
           </button>
 
@@ -321,15 +347,7 @@ export default function HomePage() {
                     <div className="px-4 py-4 border-b border-gray-200">
                       {(() => {
                         // 사용자 메뉴가 열릴 때마다 localStorage에서 최신 정보 가져오기
-                        const userStr = localStorage.getItem("user")
-                        let currentUser = user
-                        if (userStr) {
-                          try {
-                            currentUser = JSON.parse(userStr)
-                          } catch (error) {
-                            console.error("Failed to parse user data:", error)
-                          }
-                        }
+                        const currentUser = user
                         return (
                           <div className="flex items-center gap-3">
                             <div
@@ -590,9 +608,22 @@ export default function HomePage() {
                   </div>
                   {/* 오른쪽 상단: 총 방 개수와 검색창 */}
                   <div className="flex flex-col items-end gap-3">
-                    <span className="text-sm md:text-base text-black/60 whitespace-nowrap">
-                      총 {totalRooms}개 방
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm md:text-base text-black/60 whitespace-nowrap">
+                        총 {totalRooms}개 방
+                      </span>
+                      <button
+                        type="button"
+                        onClick={fetchStudyRooms}
+                        disabled={isLoadingRooms}
+                        className="flex items-center justify-center h-8 w-8 rounded-full border border-primary/40 bg-primary text-xs text-white shadow-[0_8px_20px_rgba(44,95,45,0.45)] hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        aria-label="스터디 목록 새로고침"
+                      >
+                        <RefreshCw
+                          className={`h-4 w-4 ${isLoadingRooms ? "animate-spin" : ""}`}
+                        />
+                      </button>
+                    </div>
                     {/* 검색창 */}
                     <div className="relative w-[280px] md:w-[360px]">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/60" />
@@ -963,14 +994,34 @@ export default function HomePage() {
                 로그인이 필요합니다
               </DialogTitle>
               <DialogDescription className="text-sm text-black/70 mt-1 text-center">
-                이 기능을 사용하려면
-                <br />
-                로그인이 필요해요.
+                {searchParams.get("roomId") ? (
+                  <>
+                    방에 입장하려면
+                    <br />
+                    로그인이 필요해요.
+                  </>
+                ) : (
+                  <>
+                    이 기능을 사용하려면
+                    <br />
+                    로그인이 필요해요.
+                  </>
+                )}
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="w-full flex justify-center mt-2">
+            <DialogFooter className="w-full flex justify-center gap-2 mt-2">
               <Button
-                className="w-full bg-primary hover:bg-primary/90"
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800"
+                onClick={() => {
+                  setIsLoginRequiredDialogOpen(false)
+                  // roomId 쿼리 파라미터 제거
+                  router.push("/")
+                }}
+              >
+                취소
+              </Button>
+              <Button
+                className="flex-1 bg-primary hover:bg-primary/90"
                 onClick={() => {
                   setIsLoginRequiredDialogOpen(false)
                   setIsLoginModalOpen(true)
@@ -1418,7 +1469,7 @@ export default function HomePage() {
         type="button"
         aria-label="새 공부방 만들기"
         onClick={() => setIsCreateRoomDialogOpen(true)}
-        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-40 flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-full bg-primary text-white shadow-xl shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors text-[11px] md:text-xs font-medium"
+        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-40 flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-full bg-primary text-white shadow-xl shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors text-[11px] md:text-xs font-medium cursor-pointer"
       >
         <Plus className="h-5 w-5 md:h-6 md:w-6" />
         <span>방 생성</span>
@@ -1428,17 +1479,18 @@ export default function HomePage() {
       <LoginModal
         open={isLoginModalOpen}
         onOpenChange={setIsLoginModalOpen}
-        onLoginSuccess={() => {
+        onLoginSuccess={async () => {
           setIsLoggedIn(true)
-          // localStorage에서 user 정보 가져오기
-          const userStr = localStorage.getItem("user")
-          if (userStr) {
-            try {
-              const userData = JSON.parse(userStr)
-              setUser(userData)
-            } catch (error) {
-              console.error("Failed to parse user data:", error)
-            }
+          try {
+            const me = await getCurrentUser()
+            setUser(me)
+          } catch (error) {
+            console.error("Failed to load current user after login:", error)
+          }
+          // 로그인 성공 후 roomId가 있으면 해당 방으로 이동
+          const roomIdParam = searchParams.get("roomId")
+          if (roomIdParam) {
+            router.push(`/room?roomId=${roomIdParam}`)
           }
         }}
       />
@@ -1455,5 +1507,13 @@ export default function HomePage() {
         onOpenChange={setIsUserStudyDialogOpen}
       />
     </div>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={null}>
+      <HomePageInner />
+    </Suspense>
   )
 }

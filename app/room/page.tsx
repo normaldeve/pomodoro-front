@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, useRef, Suspense } from "react"
-import { getStudyRoomMembers, RoomMemberRole, getStudyRoom } from "@/lib/api"
+import { getStudyRoomMembers, RoomMemberRole, getStudyRoom, getCurrentUser } from "@/lib/api"
 import { StudyRoomWebSocket, EnterStudyRoomRequest } from "@/lib/websocket"
 import {
   Dialog,
@@ -114,15 +114,15 @@ function RoomPageInner() {
           return
         }
 
-        // 현재 사용자 정보 가져오기
-        const userStr = localStorage.getItem("user")
-        if (!userStr) {
-          console.warn("사용자 정보가 없습니다")
-          router.push("/")
+        // 현재 사용자 정보 가져오기 (토큰 기반)
+        const accessToken = localStorage.getItem("accessToken")
+        if (!accessToken) {
+          console.warn("accessToken이 없습니다")
+          // 홈으로 리다이렉트하되 roomId를 쿼리 파라미터로 전달
+          router.push(`/?roomId=${roomId}`)
           return
         }
-
-        const userData = JSON.parse(userStr)
+        const userData = await getCurrentUser()
 
         // 방 정보와 참여자 목록 조회
         const [roomInfo, participants] = await Promise.all([
@@ -155,7 +155,6 @@ function RoomPageInner() {
                 return
               }
 
-              // role에 따라 적절한 페이지로 리다이렉트
               if (updatedUser.role === RoomMemberRole.HOST) {
                 router.replace(`/room/host?roomId=${roomId}`)
               } else {
@@ -180,7 +179,6 @@ function RoomPageInner() {
                 return
               }
 
-              // role에 따라 적절한 페이지로 리다이렉트
               if (result.role === RoomMemberRole.HOST) {
                 router.replace(`/room/host?roomId=${roomId}`)
               } else {
@@ -227,13 +225,7 @@ function RoomPageInner() {
     // roomId 기준으로 이미 입장한 방인지 확인
     if (enteredRoomIdsRef.current.has(currentRoomId)) {
       // 이미 입장한 방이면 참여자 목록만 다시 조회하여 리다이렉트
-      const userStr = localStorage.getItem("user")
-      if (!userStr) {
-        router.push("/")
-        return
-      }
-
-      const userData = JSON.parse(userStr)
+      const userData = await getCurrentUser()
       const participants = await getStudyRoomMembers(currentRoomId)
       const currentUser = participants.find(p => p.userId === userData.id)
       
@@ -246,7 +238,6 @@ function RoomPageInner() {
       setIsPasswordDialogOpen(false)
       setPassword("")
       
-      // role에 따라 적절한 페이지로 리다이렉트
       if (currentUser.role === RoomMemberRole.HOST) {
         router.replace(`/room/host?roomId=${currentRoomId}`)
       } else {
@@ -260,13 +251,7 @@ function RoomPageInner() {
       enteredRoomIdsRef.current.add(currentRoomId)
       
       // 현재 사용자 정보 가져오기
-      const userStr = localStorage.getItem("user")
-      if (!userStr) {
-        router.push("/")
-        return
-      }
-
-      const userData = JSON.parse(userStr)
+      const userData = await getCurrentUser()
       
       // WebSocket으로 방 참여
       const currentUrl = typeof window !== "undefined" ? window.location.href : undefined

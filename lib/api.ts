@@ -6,9 +6,25 @@
 import { showErrorNotification } from './system-notification'
 import { setServerStatus, isNetworkError } from './server-status'
 
-// 프론트에서 Nginx를 통해 백엔드에 접근하므로, 상대 경로를 사용합니다.
-// 예: /api/... → Nginx → backend 컨테이너
-const API_BASE_URL = ''
+// API 베이스 URL 설정
+// - 개발 환경 (localhost): 백엔드 직접 연결 (http://localhost:8080)
+// - 운영 환경: 상대 경로 사용 (Nginx를 통해 라우팅)
+const getApiBaseUrl = (): string => {
+  // 브라우저 환경에서 개발 환경 감지
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    // localhost 또는 127.0.0.1이면 개발 환경
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:8080'
+    }
+  }
+  
+  // 운영 환경 또는 서버 사이드: 상대 경로 사용
+  // 예: /api/... → Nginx → backend 컨테이너
+  return ''
+}
+
+const API_BASE_URL = getApiBaseUrl()
 
 // 인증 관련 API
 export const API_ENDPOINTS = {
@@ -18,6 +34,8 @@ export const API_ENDPOINTS = {
   UPDATE_USER_INFO: `${API_BASE_URL}/api/users/me`,
   // 로그인
   LOGIN: `${API_BASE_URL}/api/auth/login`,
+  // 토큰 기반 내 정보 조회
+  GET_ME_FROM_TOKEN: `${API_BASE_URL}/api/auth/me`,
   // 토큰 갱신
   REFRESH: `${API_BASE_URL}/api/auth/refresh`,
   // 로그아웃
@@ -40,6 +58,10 @@ export const API_ENDPOINTS = {
   GET_STUDY_ROOM_MEMBERS: `${API_BASE_URL}/api/study-room-members`,
   // 오늘 방 집중 시간 조회
   GET_TODAY_ROOM_FOCUS_TIME: `${API_BASE_URL}/api/study-room-members`,
+  // 방장 권한 위임
+  TRANSFER_HOST: `${API_BASE_URL}/api/study-room-members`,
+  // 내가 마지막으로 참여한 방 정보 조회
+  GET_MY_PARTICIPATE_ROOM: `${API_BASE_URL}/api/study-room-members/me/participate`,
   // 메시지 조회
   GET_MESSAGES: `${API_BASE_URL}/api/messages`,
   // 회고 이미지 업로드
@@ -163,8 +185,8 @@ async function refreshAccessToken(): Promise<string> {
   }
 
   if (!response.ok) {
-    if (response.status === 403) {
-      // refresh도 403이면 로그아웃 처리
+    if (response.status === 401 || response.status === 403) {
+      // refresh도 401/403이면 로그아웃 처리
       await logout()
       throw new Error('토큰이 만료되었습니다. 다시 로그인해주세요.')
     }
@@ -241,8 +263,8 @@ export async function apiRequest<T>(
     throw error
   }
 
-  // 403 에러이고 재시도 가능한 경우
-  if (response.status === 403 && retryOn403) {
+  // 401/403 에러이고 재시도 가능한 경우
+  if ((response.status === 401 || response.status === 403) && retryOn403) {
     try {
       // 토큰 갱신 시도
       const newAccessToken = await refreshAccessToken()
@@ -507,6 +529,15 @@ export async function refresh(): Promise<string> {
 }
 
 /**
+ * 액세스 토큰(Authorization 헤더)에 기반해 현재 사용자 정보 조회
+ */
+export async function getCurrentUser(): Promise<AuthDTO> {
+  return apiRequest<AuthDTO>(API_ENDPOINTS.GET_ME_FROM_TOKEN, {
+    method: 'GET',
+  })
+}
+
+/**
  * 로그아웃 API (임시)
  */
 export async function logoutApi(): Promise<void> {
@@ -658,7 +689,7 @@ export async function getStudyRooms(page: number = 0): Promise<PageResponse<Stud
 export async function getStudyRoom(roomId: number): Promise<StudyRoomResponse> {
   return apiRequest<StudyRoomResponse>(`${API_ENDPOINTS.GET_STUDY_ROOM}/${roomId}`, {
     method: 'GET',
-  }, false) // 인증 필요 없음
+  })
 }
 
 /**
@@ -729,13 +760,46 @@ export interface StudyRoomMemberResponse {
   role: RoomMemberRole
 }
 
+export interface ParticipateRoomInfo {
+  lastRoomId: number
+  role: RoomMemberRole
+  lastRoomJointAt: string
+}
+
 /**
  * 참여자 목록 조회 API
  */
 export async function getStudyRoomMembers(roomId: number): Promise<StudyRoomMemberResponse[]> {
   return apiRequest<StudyRoomMemberResponse[]>(`${API_ENDPOINTS.GET_STUDY_ROOM_MEMBERS}/${roomId}`, {
     method: 'GET',
-  }, false) // 인증 필요 없음
+  })
+}
+
+/**
+ * 방장 권한 위임 API
+ */
+export async function transferHost(roomId: number, targetUserId: number): Promise<void> {
+  return apiRequest<void>(`${API_ENDPOINTS.TRANSFER_HOST}/${roomId}/transfer-host`, {
+    method: 'POST',
+    body: JSON.stringify({ targetUserId }),
+  })
+}
+
+/**
+ * 내가 마지막으로 참여한 방 정보 조회 API
+ */
+export async function getParticipateRoomInfo(): Promise<ParticipateRoomInfo | null> {
+  try {
+    return await apiRequest<ParticipateRoomInfo>(API_ENDPOINTS.GET_MY_PARTICIPATE_ROOM, {
+      method: 'GET',
+    })
+  } catch (error: any) {
+    // 404 Not Found 인 경우에는 단순히 참여 방이 없는 것이므로 null 반환
+    if (error instanceof ApiError && error.code === 404) {
+      return null
+    }
+    throw error
+  }
 }
 
 /**

@@ -71,17 +71,9 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
         password: password,
       })
 
-      // 로그인 성공 처리
-      console.log("Login success:", response)
-      
       // accessToken을 localStorage에 저장
       if (response.accessToken) {
         localStorage.setItem("accessToken", response.accessToken)
-      }
-
-      // 사용자 정보 저장
-      if (response.user) {
-        localStorage.setItem("user", JSON.stringify(response.user))
       }
 
       // refresh_token은 HttpOnly 쿠키로 자동 저장됨 (브라우저가 자동 처리)
@@ -240,11 +232,11 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
           <DialogDescription className="text-center" style={{ color: colors.textLight }}>
             {isSignUp ? (
               <>
-                <span className="font-service-name">뽀모뽀모</span>에 가입하고 함께해요
+                <span className="font-service-name">뽀개더</span>에 가입하고 함께해요
               </>
             ) : (
               <>
-                <span className="font-service-name">뽀모뽀모</span>에 오신 것을 환영합니다
+                <span className="font-service-name">뽀개더</span>에 오신 것을 환영합니다
               </>
             )}
           </DialogDescription>

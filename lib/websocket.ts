@@ -4,10 +4,19 @@
 
 import { Client } from '@stomp/stompjs'
 
-// WebSocket URL 생성: 브라우저의 현재 프로토콜을 사용하여 ws:// 또는 wss:// 자동 선택
+// WebSocket URL 생성
+// - 개발 환경 (localhost): 백엔드 직접 연결 (ws://localhost:8080/ws)
+// - 운영 환경: 현재 페이지의 프로토콜 사용 (ws:// 또는 wss://)
 const getWebSocketUrl = (): string => {
-  // 브라우저 환경에서는 현재 페이지의 프로토콜 사용
+  // 브라우저 환경
   if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    // localhost 또는 127.0.0.1이면 개발 환경
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'ws://localhost:8080/ws'
+    }
+    
+    // 운영 환경: 현재 페이지의 프로토콜 사용
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     return `${protocol}//${host}/ws`
@@ -116,6 +125,19 @@ export interface ParticipantMemberInfo {
 }
 
 /**
+ * 방장 권한 위임 알림 (백엔드 HostTransferredResponse와 동일)
+ */
+export interface HostTransferredEvent {
+  previousHostId: number
+  previousHostNickname: string
+  previousHostProfileUrl: string | null
+  newHostId: number
+  newHostNickname: string
+  newHostProfileUrl: string | null
+  isAutoTransfer: boolean
+}
+
+/**
  * 방 입장 응답 (백엔드에서 받는 형식)
  */
 export interface EnterRoomWsResponse {
@@ -173,6 +195,7 @@ export class StudyRoomWebSocket {
   private onChatMessageCallback: ((message: MessageResponse) => void) | null = null
   private onMemberEnterCallback: ((member: ParticipantMemberInfo | null) => void) | null = null
   private onMemberExitCallback: ((userId: number) => void) | null = null
+  private onHostTransferredCallback: ((event: HostTransferredEvent) => void) | null = null
   private onRoomStatusCallback: ((status: RoomStatus) => void) | null = null
   private onFocusTimeChangedCallback: ((focusTime: number) => void) | null = null
   private onRoomStateCallback: ((state: RoomStateResponse) => void) | null = null
@@ -202,7 +225,8 @@ export class StudyRoomWebSocket {
     onFocusTimeChanged?: (focusTime: number) => void,
     onRoomState?: (state: RoomStateResponse) => void,
     onFinishSession?: (status: RoomStatus) => void,
-    onReflectionData?: (event: ReflectionEvent) => void
+    onReflectionData?: (event: ReflectionEvent) => void,
+    onHostTransferred?: (event: HostTransferredEvent) => void
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       // 콜백 저장 (재연결 시에도 사용)
@@ -210,6 +234,7 @@ export class StudyRoomWebSocket {
       this.onChatMessageCallback = onChatMessage || null
       this.onMemberEnterCallback = onMemberEnter || null
       this.onMemberExitCallback = onMemberExit || null
+      this.onHostTransferredCallback = onHostTransferred || null
       this.onReflectionCallback = onReflection || null
       this.onReflectionDataCallback = onReflectionData || null
       this.onRoomStatusCallback = onRoomStatus || null
@@ -344,8 +369,8 @@ export class StudyRoomWebSocket {
       )
     }
 
-    // 참여자 입장/퇴장 구독
-    if (this.onMemberEnterCallback || this.onMemberExitCallback) {
+    // 참여자 입장/퇴장/방장 변경 구독
+    if (this.onMemberEnterCallback || this.onMemberExitCallback || this.onHostTransferredCallback) {
       this.memberSubscription = this.client.subscribe(
         `/topic/study-room/${this.roomId}/members`,
         (message) => {
@@ -357,7 +382,18 @@ export class StudyRoomWebSocket {
               this.onMemberExitCallback?.(data)
               return
             }
-            
+
+            // 방장 변경 알림: HostTransferredEvent 구조
+            if (
+              typeof data === 'object' &&
+              data !== null &&
+              'previousHostId' in data &&
+              'newHostId' in data
+            ) {
+              this.onHostTransferredCallback?.(data as HostTransferredEvent)
+              return
+            }
+
             // 입장 메시지: ParticipantMemberInfo 객체 또는 null
             if (data === null || data === undefined) {
               this.onMemberEnterCallback?.(null)

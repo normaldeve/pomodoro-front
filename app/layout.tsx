@@ -17,7 +17,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "뽀모뽀모",
+  title: "뽀개더",
   description: "뽀모도로로 함께 집중하는 공부방 서비스",
   generator: "v0.app",
   icons: {

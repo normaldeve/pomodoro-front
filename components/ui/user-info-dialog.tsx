@@ -14,7 +14,7 @@ import { Button } from "./button"
 import { Switch } from "./switch"
 import { CustomScrollbar } from "./custom-scrollbar"
 import { User, Bell, Camera } from "lucide-react"
-import { updateUserInfo } from "@/lib/api"
+import { updateUserInfo, getCurrentUser } from "@/lib/api"
 import { showSuccessNotification } from "@/lib/system-notification"
 
 export interface UserInfoDialogProps {
@@ -38,24 +38,23 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
   const [pushNotifications, setPushNotifications] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
-  // 로컬 스토리지에서 사용자 ID(username) 불러오기 (읽기 전용)
+  // 현재 사용자 정보 불러오기 (읽기 전용)
   useEffect(() => {
     // 다이얼로그가 열릴 때마다 최신 사용자 정보를 가져오기 위해 open을 의존성으로 사용
     if (!open) return
-    if (typeof window === "undefined") return
-    const userStr = window.localStorage.getItem("user")
-    if (!userStr) return
     try {
-      const user = JSON.parse(userStr)
-      if (user?.username) {
-        setUserId(user.username)
-      }
-      if (user?.nickname) {
-        setNickname(user.nickname)
-      }
-      if (user?.profileUrl) {
-        setProfileImage(user.profileUrl)
-      }
+      ;(async () => {
+        const me = await getCurrentUser()
+        if (me?.username) {
+          setUserId(me.username)
+        }
+        if (me?.nickname) {
+          setNickname(me.nickname)
+        }
+        if (me?.profileUrl) {
+          setProfileImage(me.profileUrl)
+        }
+      })()
     } catch (e) {
       console.error("Failed to parse user info in UserInfoDialog:", e)
     }
@@ -107,19 +106,6 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
 
       // API 호출
       const updatedUserInfo = await updateUserInfo(updateData)
-
-      // localStorage의 user 정보 업데이트
-      const userStr = localStorage.getItem("user")
-      if (userStr) {
-        try {
-          const user = JSON.parse(userStr)
-          user.nickname = updatedUserInfo.nickname
-          user.profileUrl = updatedUserInfo.profileUrl
-          localStorage.setItem("user", JSON.stringify(user))
-        } catch (error) {
-          console.error("Failed to update user in localStorage:", error)
-        }
-      }
 
       // 성공 알림
       showSuccessNotification("프로필이 업데이트되었습니다.")

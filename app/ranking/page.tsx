@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Trophy, ArrowLeft, Medal } from "lucide-react"
+import { getCurrentUser } from "@/lib/api"
 
 interface RankingUser {
   rank: number
@@ -82,21 +83,25 @@ export default function RankingPage() {
 
   // 현재 사용자 정보 로드
   useEffect(() => {
-    const userStr = localStorage.getItem("user")
-    if (userStr) {
+    ;(async () => {
       try {
-        const userData = JSON.parse(userStr)
-        setCurrentUser(userData)
-        
+        const me = await getCurrentUser()
+        setCurrentUser({
+          id: me.id,
+          nickname: me.nickname,
+          username: me.username,
+          profileUrl: me.profileUrl,
+        })
+
         // 사용자의 랭킹 찾기
-        const rank = rankingData.findIndex((user) => user.userId === userData.id)
+        const rank = rankingData.findIndex((user) => user.userId === me.id)
         if (rank !== -1) {
           setUserRank(rank + 1)
         }
       } catch (error) {
-        console.error("Failed to parse user data:", error)
+        console.error("현재 사용자 정보 로드 실패:", error)
       }
-    }
+    })()
   }, [rankingData])
 
   // 로딩 애니메이션 효과
