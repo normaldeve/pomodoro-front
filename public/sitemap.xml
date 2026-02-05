@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- 홈 -->
+  <url>
+    <loc>https://pogather.site/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- 랭킹 페이지 -->
+  <url>
+    <loc>https://pogather.site/ranking</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 방 진입 (역할에 따라 host/member로 라우팅됨) -->
+  <url>
+    <loc>https://pogather.site/room</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 방장/참여자 전용 페이지 (대표 경로만 노출) -->
+  <url>
+    <loc>https://pogather.site/room/host</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://pogather.site/room/member</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- 세션 요약 페이지 -->
+  <url>
+    <loc>https://pogather.site/session-summary</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>
+
