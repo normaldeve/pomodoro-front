@@ -272,15 +272,7 @@ export function LiquidChat({
 
   return (
     <div
-      className="flex flex-col rounded-3xl w-full h-full min-h-0"
-      style={{
-        overflow: "hidden",
-        backgroundColor: "#fff8ea",
-        backdropFilter: "blur(30px) saturate(180%)",
-        boxShadow:
-          "0 20px 60px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
-        border: "1px solid rgba(255, 255, 255, 0.6)",
-      }}
+      className="flex flex-col w-full h-full min-h-0 overflow-hidden"
     >
       {/* Header */}
       <div

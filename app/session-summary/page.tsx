@@ -206,7 +206,7 @@ function SessionSummaryPageInner() {
         opacity: isLoaded ? 1 : 0,
       }}
     >
-      <div className="relative z-10 flex w-full max-w-3xl flex-col">
+      <div className="relative z-10 flex w-full max-w-2xl flex-col">
         {/* 오늘 공부한 시간 - 가장 위 */}
         <section
           className="mb-6 rounded-3xl bg-gradient-to-br from-white/80 via-white/65 to-white/45 backdrop-blur-3xl border border-white/70 shadow-[0_20px_60px_rgba(0,0,0,0.14)] px-8 py-10 transition-all duration-700 ease-out"

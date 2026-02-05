@@ -3,6 +3,7 @@
 import { Crown, UserCheck } from "lucide-react"
 import { StudyRoomMemberResponse, RoomMemberRole } from "@/lib/api"
 import { Button } from "@/components/ui/button"
+import { CustomScrollbar } from "./custom-scrollbar"
 
 const colors = {
   // 시스템 primary 그린 팔레트
@@ -32,9 +33,9 @@ export function ParticipantsList({
   onTransferHost
 }: ParticipantsListProps) {
   return (
-    <aside className="block">
-      <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-5 py-6 flex flex-col gap-4 h-full">
-        <div className="flex items-center justify-between">
+    <aside className="block h-full">
+      <div className="px-5 py-6 flex flex-col gap-4 h-full">
+        <div className="flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2">
             <div
               className="w-3 h-3 rounded-full"
@@ -51,7 +52,8 @@ export function ParticipantsList({
             총 {participants.length}명
           </span>
         </div>
-        <div className="flex flex-col gap-3">
+        <CustomScrollbar className="flex-1 overflow-y-auto min-h-0">
+          <div className="flex flex-col gap-3">
           {isLoading ? (
             <div className="text-center py-4 text-xs font-sans" style={{ color: colors.textLight }}>
               로딩 중...
@@ -119,7 +121,8 @@ export function ParticipantsList({
               </div>
             ))
           )}
-        </div>
+          </div>
+        </CustomScrollbar>
       </div>
     </aside>
   )

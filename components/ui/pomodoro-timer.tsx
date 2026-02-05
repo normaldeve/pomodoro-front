@@ -523,7 +523,7 @@ export function PomodoroTimer({
             }}
           />
           <span
-            className="text-2xl font-medium font-sans"
+            className="text-xl font-medium font-sans"
             style={{ color: colors.text }}
           >
             {phaseTitle}

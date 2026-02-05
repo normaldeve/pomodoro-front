@@ -114,7 +114,6 @@ function HomePageInner() {
   const [isUserInfoDialogOpen, setIsUserInfoDialogOpen] = useState(false) // 내 정보 다이얼로그 상태
   const [isLoaded, setIsLoaded] = useState(false)
   const [showHeader, setShowHeader] = useState(false)
-  const [showHero, setShowHero] = useState(false)
   const [showRooms, setShowRooms] = useState(false)
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0)
   const [currentPage, setCurrentPage] = useState(0) // 현재 페이지 (0부터 시작)
@@ -262,13 +261,21 @@ function HomePageInner() {
   useEffect(() => {
     setIsLoaded(true)
     setTimeout(() => setShowHeader(true), 100)
-    setTimeout(() => setShowHero(true), 300)
-    setTimeout(() => setShowRooms(true), 500)
+    setTimeout(() => setShowRooms(true), 300)
+  }, [])
+
+  // 배너 자동 전환 (5초마다)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBannerIndex((prev) => (prev === 0 ? 1 : 0))
+    }, 5000)
+
+    return () => clearInterval(interval)
   }, [])
 
   return (
     <div
-      className="min-h-screen flex items-stretch justify-center p-6 md:p-10"
+      className="min-h-screen flex items-stretch justify-center px-6 pt-3 pb-6 md:px-10 md:pt-4 md:pb-10"
       style={{
         // 가장 뒷 배경을 #fff8ea 베이지 톤으로 설정
         backgroundColor: "#fff8ea",
@@ -277,10 +284,10 @@ function HomePageInner() {
       }}
     >
       {/* Header + Main content wrapper */}
-      <div className="relative z-10 flex w-full max-w-4xl flex-col gap-8">
+      <div className="relative z-10 flex w-full max-w-2xl flex-col gap-8">
         {/* Header */}
         <header
-          className="relative flex items-center justify-between gap-4 py-3 text-xs md:text-sm text-black transition-all duration-700 ease-out min-h-[60px]"
+          className="relative flex items-center justify-between gap-4 py-3 text-xs md:text-sm text-black transition-all duration-700 ease-out h-[50px]"
           style={{
             opacity: showHeader ? 1 : 0,
             transform: showHeader ? "translateY(0)" : "translateY(-20px)",
@@ -439,126 +446,50 @@ function HomePageInner() {
         <main className="flex w-full">
           {/* Hero + room list */}
           <section className="flex-1 flex flex-col gap-6">
-            {/* Hero 배너 캐러셀 */}
-            <div className="relative">
-              <div className="overflow-hidden rounded-3xl">
-                <div
-                  className="flex transition-transform duration-500 ease-in-out"
-                  style={{
-                    transform: `translateX(-${currentBannerIndex * 100}%)`,
-                  }}
-                >
-                  {/* 첫 번째 배너 */}
-                  <div
-                    className="min-w-full px-8 py-4 md:px-10 md:py-6 bg-gradient-to-br from-white/70 via-white/40 to-white/20 backdrop-blur-3xl border border-white/40 shadow-[0_24px_80px_rgba(0,0,0,0.18)] transition-all duration-700 ease-out"
-                    style={{
-                      opacity: showHero ? 1 : 0,
-                      transform: showHero ? "translateY(0)" : "translateY(20px)",
-                    }}
-                  >
-                    <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-6">
-                      {/* Left: 텍스트 영역 */}
-                      <div className="flex-1 flex flex-col gap-2 md:gap-3">
-                        <div className="space-y-2">
-                          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight text-black">
-                            포모도로와 함께,
-                            <br />
-                            사람들과 함께하는 스터디
-                          </h1>
-                          <p className="text-xs md:text-sm text-black/70 max-w-xl leading-relaxed">
-                            같은 리듬으로 함께 집중하고 쉬어 주면
-                            훨씬 오래, 더 편안하게 몰입할 수 있어요.
-                            <br className="hidden md:inline" />
-                            지금 진행 중인 스터디에 들어가 한 세션만 같이 달려볼까요?
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Right: 포모도로 시계(다이얼만) */}
-                      <div className="hidden md:flex flex-none justify-end">
-                        <div className="scale-75 origin-center">
-                          <PomodoroDialStatic minutes={50} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 두 번째 배너 - 나의 뽀모 */}
-                  <div
-                    className="min-w-full px-8 py-4 md:px-10 md:py-6 bg-gradient-to-br from-white/70 via-white/40 to-white/20 backdrop-blur-3xl border border-white/40 shadow-[0_24px_80px_rgba(0,0,0,0.18)] transition-all duration-700 ease-out"
-                    style={{
-                      opacity: showHero ? 1 : 0,
-                      transform: showHero ? "translateY(0)" : "translateY(20px)",
-                    }}
-                  >
-                    <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-6">
-                      {/* Left: 텍스트 영역 */}
-                      <div className="flex-1 flex flex-col gap-2 md:gap-3">
-                        <div className="space-y-2">
-                          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight text-black">
-                            포인트를 쌓아서
-                            <br />
-                            나의 뽀모를 키워보세요!
-                          </h1>
-                          <p className="text-xs md:text-sm text-black/70 max-w-xl leading-relaxed">
-                            공부방에서 집중하고 세션을 완료하면 포인트가 쌓여요.
-                            <br className="hidden md:inline" />
-                            포인트가 쌓일수록 뽀모 캐릭터가 성장하고 레벨이 올라가요!
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Right: 캐릭터 이미지 */}
-                      <div className="hidden md:flex flex-none justify-end">
-                        <Image
-                          src="/images/level/level3.png"
-                          alt="나의 뽀모"
-                          width={150}
-                          height={150}
-                          className="w-32 h-32 md:w-40 md:h-40 object-contain"
-                          style={{
-                            filter: "drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15))",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
+            {/* 배너 캐러셀 */}
+            <div className="relative w-full overflow-hidden rounded-3xl h-[120px] md:h-[150px]">
+              <div
+                className="flex transition-transform duration-500 ease-in-out h-full"
+                style={{
+                  transform: `translateX(-${currentBannerIndex * 100}%)`,
+                }}
+              >
+                {/* 첫 번째 배너 */}
+                <div className="min-w-full h-full flex-shrink-0">
+                  <Image
+                    src="/banners/banner_main.png"
+                    alt="배너 1"
+                    width={1200}
+                    height={300}
+                    className="w-full h-full object-cover"
+                    priority
+                  />
                 </div>
-              </div>
-
-              {/* 배너 네비게이션 버튼 */}
-              <div className="absolute top-1/2 -translate-y-1/2 left-2">
-                <button
-                  onClick={() => setCurrentBannerIndex((prev) => (prev === 0 ? 1 : 0))}
-                  className="p-2 rounded-full bg-white/80 backdrop-blur-sm border border-white/60 shadow-lg hover:bg-white transition-colors"
-                  aria-label="이전 배너"
-                >
-                  <ChevronLeft className="w-5 h-5 text-black" />
-                </button>
-              </div>
-              <div className="absolute top-1/2 -translate-y-1/2 right-2">
-                <button
-                  onClick={() => setCurrentBannerIndex((prev) => (prev === 0 ? 1 : 0))}
-                  className="p-2 rounded-full bg-white/80 backdrop-blur-sm border border-white/60 shadow-lg hover:bg-white transition-colors"
-                  aria-label="다음 배너"
-                >
-                  <ChevronRight className="w-5 h-5 text-black" />
-                </button>
+                {/* 두 번째 배너 */}
+                <div className="min-w-full h-full flex-shrink-0">
+                  <Image
+                    src="/banners/banner_new_year.png"
+                    alt="배너 2"
+                    width={1200}
+                    height={300}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               </div>
 
               {/* 배너 인디케이터 */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                 <button
                   onClick={() => setCurrentBannerIndex(0)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    currentBannerIndex === 0 ? "bg-black w-6" : "bg-black/30"
+                  className={`h-2 rounded-full transition-all ${
+                    currentBannerIndex === 0 ? "bg-black w-6" : "bg-black/30 w-2"
                   }`}
                   aria-label="첫 번째 배너"
                 />
                 <button
                   onClick={() => setCurrentBannerIndex(1)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    currentBannerIndex === 1 ? "bg-black w-6" : "bg-black/30"
+                  className={`h-2 rounded-full transition-all ${
+                    currentBannerIndex === 1 ? "bg-black w-6" : "bg-black/30 w-2"
                   }`}
                   aria-label="두 번째 배너"
                 />
@@ -571,6 +502,7 @@ function HomePageInner() {
               style={{
                 opacity: showRooms ? 1 : 0,
                 transform: showRooms ? "translateY(0)" : "translateY(20px)",
+                minHeight: "400px",
               }}
             >
               <header className="flex flex-col gap-3 px-2">

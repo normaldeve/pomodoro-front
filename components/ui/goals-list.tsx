@@ -126,15 +126,7 @@ export function GoalsList({ roomId, roomStatus }: GoalsListProps) {
 
   return (
     <div
-      className="flex flex-col rounded-3xl w-full h-[400px] max-h-[400px]"
-      style={{
-        background:
-          "linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.45), rgba(255,255,255,0.25))",
-        backdropFilter: "blur(30px) saturate(180%)",
-        boxShadow:
-          "0 20px 60px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
-        border: "1px solid rgba(255, 255, 255, 0.6)",
-      }}
+      className="flex flex-col rounded-3xl w-full h-full bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)]"
     >
       {/* Header */}
       <div

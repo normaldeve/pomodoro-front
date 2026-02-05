@@ -27,7 +27,7 @@ import { useStudyRoomWebSocket } from "@/hooks/use-study-room-websocket"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound-notification"
-import { Volume2, VolumeX, User, MessageSquare } from "lucide-react"
+import { Volume2, VolumeX, MessageSquare, Clock, Target, BookOpen, Users } from "lucide-react"
 
 // 초를 00:00 형식으로 변환하는 함수
 const formatTime = (seconds: number): string => {
@@ -47,6 +47,7 @@ function HostRoomPageInner() {
   const [isHostTransferredDialogOpen, setIsHostTransferredDialogOpen] = useState(false)
   const [hostTransferredMessage, setHostTransferredMessage] = useState<string>("")
   const [isTransferHostDialogOpen, setIsTransferHostDialogOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<"timer" | "goals" | "reflection" | "chat" | "participants">("timer")
   const [transferTargetUserId, setTransferTargetUserId] = useState<number | null>(null)
   const [transferTargetNickname, setTransferTargetNickname] = useState<string>("")
   const [currentReflectionSessionId, setCurrentReflectionSessionId] = useState<number | null>(null)
@@ -71,8 +72,6 @@ function HostRoomPageInner() {
   const [participants, setParticipants] = useState<StudyRoomMemberResponse[]>([])
   const [isLoadingParticipants, setIsLoadingParticipants] = useState(false)
   const [soundEnabled, setSoundEnabledState] = useState(true)
-  const [isParticipantsVisible, setIsParticipantsVisible] = useState(false)
-  const [isChatVisible, setIsChatVisible] = useState(false)
 
   // WebSocket 연결
   const { sendDialDrag, sendTimerStart, sendTimerPause, sendTimerResume, sendNextFocusMinutes, statusMessage, timerState, sendChatMessage, chatMessages, newMember, exitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData, hostTransferredEvent } = useStudyRoomWebSocket(roomInfo?.roomId || null)
@@ -588,35 +587,6 @@ function HostRoomPageInner() {
     setCurrentReflectionSessionId(null)
   }
 
-  // 채팅창이 열려있을 때 외부 스크롤 감지하여 채팅창 닫기
-  useEffect(() => {
-    if (!isChatVisible) return
-
-    const handleScroll = (e: Event) => {
-      const target = e.target
-      // target이 Element인지 확인하고 closest 메서드가 있는지 확인
-      if (target && target instanceof Element && 'closest' in target) {
-        // Dialog 내부 요소인지 확인
-        const dialogContent = target.closest('[data-slot="dialog-content"]')
-        // Dialog 내부가 아니면 채팅창 닫기
-        if (!dialogContent) {
-          setIsChatVisible(false)
-        }
-      } else {
-        // target이 Element가 아니면 (document나 window인 경우) 채팅창 닫기
-        setIsChatVisible(false)
-      }
-    }
-
-    // 스크롤 이벤트 리스너 추가 (capture phase에서도 감지)
-    window.addEventListener('scroll', handleScroll, true)
-    document.addEventListener('scroll', handleScroll, true)
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll, true)
-      document.removeEventListener('scroll', handleScroll, true)
-    }
-  }, [isChatVisible])
 
   return (
     <div
@@ -625,7 +595,7 @@ function HostRoomPageInner() {
         backgroundColor: "#fff8ea",
       }}
     >
-      <div className="relative z-10 flex w-full max-w-3xl flex-col">
+      <div className="relative z-10 flex w-full max-w-2xl flex-col">
         {/* 방 정보 영역 - 제목 */}
         <section className="mb-4 rounded-3xl bg-gradient-to-r from-white/85 via-white/75 to-white/60 backdrop-blur-2xl border border-white/70 shadow-[0_16px_40px_rgba(0,0,0,0.12)] px-6 py-4 md:px-8 md:py-5 flex flex-col gap-2 relative">
           <div className="flex items-center justify-between gap-3">
@@ -634,18 +604,20 @@ function HostRoomPageInner() {
                 {roomInfo?.title || ""}
               </h1>
             </div>
-          </div>
-          
-          {/* 오른쪽 캐릭터 */}
-          <div className="absolute right-6 md:right-8 top-1/2 -translate-y-1/2">
-            <img
-              src="/images/home_icon.png"
-              alt="안녕하세요!"
-              className="w-16 h-16 md:w-20 md:h-20 object-contain"
+            {/* 나가기 버튼 */}
+            <button
+              type="button"
+              aria-label="방 나가기"
+              onClick={() => setIsExitDialogOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors flex-shrink-0"
               style={{
-                filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))",
+                backgroundColor: "#2c5f2d",
+                color: "white",
               }}
-            />
+            >
+              <DoorClosed className="w-4 h-4" />
+              <span className="text-xs font-medium">나가기</span>
+            </button>
           </div>
         </section>
 
@@ -684,35 +656,6 @@ function HostRoomPageInner() {
                 </span>
               )}
 
-              {/* 참여자 명단 토글 버튼 */}
-              <button
-                onClick={() => setIsParticipantsVisible(!isParticipantsVisible)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors"
-                style={{
-                  backgroundColor: "#2c5f2d",
-                  color: "white",
-                }}
-                title="참여자 목록"
-              >
-                <User className="w-4 h-4" />
-                <span className="text-[10px] md:text-xs font-medium">
-                  {participants.length}
-                </span>
-              </button>
-
-              {/* 채팅 토글 버튼 */}
-              <button
-                onClick={() => setIsChatVisible(!isChatVisible)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors"
-                style={{
-                  backgroundColor: "#2c5f2d",
-                  color: "white",
-                }}
-                title="채팅"
-              >
-                <MessageSquare className="w-4 h-4" />
-              </button>
-
               {/* 소리 on/off 토글 */}
               <div className="flex items-center gap-2 ml-auto">
                 {soundEnabled ? (
@@ -737,105 +680,86 @@ function HostRoomPageInner() {
         )}
 
         {/* 메인 콘텐츠 */}
-        <main className="relative flex flex-col gap-4 md:gap-6">
-          {/* 첫 번째 row: 타이머 - 한 줄 전체 사용 */}
-          <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-6 md:px-8 md:py-6 flex items-center justify-center overflow-hidden w-full">
-            {roomInfo?.timerType === TimerType.FLIP ? (
-              <div className="w-full max-w-full flex items-center justify-center scale-65 md:scale-75">
-                <FlipTimer
-                disabled={false}
-                defaultMinutes={roomInfo?.focusMinutes || 25}
-                currentSession={1}
-                totalSessions={roomInfo?.totalSessions || 4}
-                externalTimerState={timerState}
-                roomStatus={roomInfo?.status}
-                onDragStart={() => sendDialDrag("DIAL_DRAG_START", 0)}
-                onDragMove={(minutes) => sendDialDrag("DIAL_DRAG_MOVE", minutes)}
-                onDragEnd={(minutes) => sendDialDrag("DIAL_DRAG_END", minutes)}
-                onStart={(minutes) => {
-                  if (roomInfo) {
-                    sendTimerStart({
-                      focusMinutes: minutes,
-                      breakMinutes: roomInfo.breakMinutes,
-                      totalSessions: roomInfo.totalSessions,
-                    })
-                  }
-                }}
-                onPause={() => {
-                  sendTimerPause()
-                }}
-                onResume={() => {
-                  sendTimerResume()
-                }}
-                onNextFocusMinutesSet={(minutes) => {
-                  sendNextFocusMinutes(minutes)
-                }}
-                />
-              </div>
-            ) : (
-              <PomodoroTimer
-                disabled={false}
-                defaultMinutes={roomInfo?.focusMinutes || 25}
-                currentSession={1}
-                totalSessions={roomInfo?.totalSessions || 4}
-                externalTimerState={timerState}
-                roomStatus={roomInfo?.status}
-                onDragStart={() => sendDialDrag("DIAL_DRAG_START", 0)}
-                onDragMove={(minutes) => sendDialDrag("DIAL_DRAG_MOVE", minutes)}
-                onDragEnd={(minutes) => sendDialDrag("DIAL_DRAG_END", minutes)}
-                onStart={(minutes) => {
-                  if (roomInfo) {
-                    sendTimerStart({
-                      focusMinutes: minutes,
-                      breakMinutes: roomInfo.breakMinutes,
-                      totalSessions: roomInfo.totalSessions,
-                    })
-                  }
-                }}
-                onPause={() => {
-                  sendTimerPause()
-                }}
-                onResume={() => {
-                  sendTimerResume()
-                }}
-                onNextFocusMinutesSet={(minutes) => {
-                  sendNextFocusMinutes(minutes)
-                }}
-              />
-            )}
-          </div>
-
-          {/* 참여자 명단 Dialog */}
-          <Dialog open={isParticipantsVisible} onOpenChange={setIsParticipantsVisible}>
-            <DialogContent className="!max-w-[280px] sm:!max-w-[280px] md:!max-w-[280px] lg:!max-w-[280px] !w-[65vw] sm:!w-[65vw] md:!w-[65vw] lg:!w-[65vw] !max-h-[80vh] !h-auto overflow-hidden !flex !flex-col p-0 !grid-cols-none md:!left-auto md:!right-4 md:!top-4 md:!translate-x-0 md:!translate-y-0" hideOverlay={true}>
-              <DialogTitle className="sr-only">참여자 목록</DialogTitle>
-              <div className="flex-1 overflow-y-auto min-h-0">
-                <ParticipantsList 
-                  participants={participants} 
-                  isLoading={isLoadingParticipants}
-                  isHost={true}
-                  onTransferHost={(userId) => {
-                    const targetParticipant = participants.find(p => p.userId === userId)
-                    if (targetParticipant) {
-                      setTransferTargetUserId(userId)
-                      setTransferTargetNickname(targetParticipant.nickname)
-                      setIsTransferHostDialogOpen(true)
+        <main className="relative flex flex-col gap-4 md:gap-6 pb-16">
+          {/* 타이머 탭 */}
+          {activeTab === "timer" && (
+            <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-6 md:px-8 md:py-6 flex items-center justify-center overflow-hidden w-full">
+              {roomInfo?.timerType === TimerType.FLIP ? (
+                <div className="w-full max-w-full flex items-center justify-center scale-65 md:scale-75">
+                  <FlipTimer
+                  disabled={false}
+                  defaultMinutes={roomInfo?.focusMinutes || 25}
+                  currentSession={1}
+                  totalSessions={roomInfo?.totalSessions || 4}
+                  externalTimerState={timerState}
+                  roomStatus={roomInfo?.status}
+                  onDragStart={() => sendDialDrag("DIAL_DRAG_START", 0)}
+                  onDragMove={(minutes) => sendDialDrag("DIAL_DRAG_MOVE", minutes)}
+                  onDragEnd={(minutes) => sendDialDrag("DIAL_DRAG_END", minutes)}
+                  onStart={(minutes) => {
+                    if (roomInfo) {
+                      sendTimerStart({
+                        focusMinutes: minutes,
+                        breakMinutes: roomInfo.breakMinutes,
+                        totalSessions: roomInfo.totalSessions,
+                      })
                     }
                   }}
+                  onPause={() => {
+                    sendTimerPause()
+                  }}
+                  onResume={() => {
+                    sendTimerResume()
+                  }}
+                  onNextFocusMinutesSet={(minutes) => {
+                    sendNextFocusMinutes(minutes)
+                  }}
+                  />
+                </div>
+              ) : (
+                <PomodoroTimer
+                  disabled={false}
+                  defaultMinutes={roomInfo?.focusMinutes || 25}
+                  currentSession={1}
+                  totalSessions={roomInfo?.totalSessions || 4}
+                  externalTimerState={timerState}
+                  roomStatus={roomInfo?.status}
+                  onDragStart={() => sendDialDrag("DIAL_DRAG_START", 0)}
+                  onDragMove={(minutes) => sendDialDrag("DIAL_DRAG_MOVE", minutes)}
+                  onDragEnd={(minutes) => sendDialDrag("DIAL_DRAG_END", minutes)}
+                  onStart={(minutes) => {
+                    if (roomInfo) {
+                      sendTimerStart({
+                        focusMinutes: minutes,
+                        breakMinutes: roomInfo.breakMinutes,
+                        totalSessions: roomInfo.totalSessions,
+                      })
+                    }
+                  }}
+                  onPause={() => {
+                    sendTimerPause()
+                  }}
+                  onResume={() => {
+                    sendTimerResume()
+                  }}
+                  onNextFocusMinutesSet={(minutes) => {
+                    sendNextFocusMinutes(minutes)
+                  }}
                 />
-              </div>
-            </DialogContent>
-          </Dialog>
+              )}
+            </div>
+          )}
 
-          {/* 두 번째 row: 목표 & 회고를 좌우 반반 배치 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-2">
-            {/* 목표 */}
-            <div className="h-full">
+          {/* 목표 탭 */}
+          {activeTab === "goals" && (
+            <div className="w-full h-[calc(100vh-280px)] min-h-[500px]">
               {roomInfo && <GoalsList roomId={roomInfo.roomId} roomStatus={roomInfo.status} />}
             </div>
+          )}
 
-            {/* 회고 */}
-            <div className="h-full">
+          {/* 회고 탭 */}
+          {activeTab === "reflection" && (
+            <div className="w-full h-[calc(100vh-280px)] min-h-[500px]">
               <Reflection
                 initialReflections={initialReflections}
                 liveReflection={currentLiveReflection}
@@ -853,12 +777,11 @@ function HostRoomPageInner() {
                 }}
               />
             </div>
-          </div>
+          )}
 
-          {/* 채팅 Dialog */}
-          <Dialog open={isChatVisible} onOpenChange={setIsChatVisible}>
-            <DialogContent className="!max-w-[280px] sm:!max-w-[280px] md:!max-w-[280px] lg:!max-w-[280px] !w-[65vw] sm:!w-[65vw] md:!w-[65vw] lg:!w-[65vw] !h-[80vh] overflow-hidden !flex !flex-col !grid-cols-none p-0 md:!left-auto md:!right-4 md:!top-4 md:!translate-x-0 md:!translate-y-0" hideOverlay={true}>
-              <DialogTitle className="sr-only">채팅</DialogTitle>
+          {/* 채팅 탭 */}
+          {activeTab === "chat" && (
+            <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] overflow-hidden w-full h-[calc(100vh-280px)] min-h-[500px] flex flex-col">
               <div className="flex-1 min-h-0 overflow-hidden">
                 <LiquidChat
                   messages={liquidChatMessages}
@@ -874,8 +797,28 @@ function HostRoomPageInner() {
                   isInitialLoadComplete={isInitialLoadComplete}
                 />
               </div>
-            </DialogContent>
-          </Dialog>
+            </div>
+          )}
+
+          {/* 인원 탭 */}
+          {activeTab === "participants" && (
+            <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] overflow-hidden w-full h-[calc(100vh-280px)] min-h-[500px]">
+              <ParticipantsList 
+                participants={participants} 
+                isLoading={isLoadingParticipants}
+                isHost={true}
+                onTransferHost={(userId) => {
+                  const targetParticipant = participants.find(p => p.userId === userId)
+                  if (targetParticipant) {
+                    setTransferTargetUserId(userId)
+                    setTransferTargetNickname(targetParticipant.nickname)
+                    setIsTransferHostDialogOpen(true)
+                  }
+                }}
+              />
+            </div>
+          )}
+
 
         </main>
       </div>
@@ -980,16 +923,74 @@ function HostRoomPageInner() {
         </DialogContent>
       </Dialog>
 
-      {/* 오른쪽 하단 나가기 플로팅 버튼 */}
-      <button
-        type="button"
-        aria-label="방 나가기"
-        onClick={() => setIsExitDialogOpen(true)}
-        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 flex h-16 w-16 md:h-18 md:w-18 flex-col items-center justify-center gap-1 rounded-full bg-primary text-white shadow-xl shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors text-[11px] md:text-xs font-medium cursor-pointer"
-      >
-        <DoorClosed className="h-5 w-5 md:h-6 md:w-6" />
-        <span>나가기</span>
-      </button>
+      {/* 하단 탭 바 */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
+        <div className="w-full max-w-2xl bg-white/80 backdrop-blur-xl border-t border-white/60 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+          <div className="flex items-center justify-around px-2 py-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("timer")}
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+              activeTab === "timer"
+                ? "text-primary bg-primary/10"
+                : "text-black/60 hover:text-black/80"
+            }`}
+          >
+            <Clock className="h-5 w-5" />
+            <span className="text-[10px] font-medium">타이머</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("goals")}
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+              activeTab === "goals"
+                ? "text-primary bg-primary/10"
+                : "text-black/60 hover:text-black/80"
+            }`}
+          >
+            <Target className="h-5 w-5" />
+            <span className="text-[10px] font-medium">목표</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("reflection")}
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+              activeTab === "reflection"
+                ? "text-primary bg-primary/10"
+                : "text-black/60 hover:text-black/80"
+            }`}
+          >
+            <BookOpen className="h-5 w-5" />
+            <span className="text-[10px] font-medium">회고</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("chat")}
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+              activeTab === "chat"
+                ? "text-primary bg-primary/10"
+                : "text-black/60 hover:text-black/80"
+            }`}
+          >
+            <MessageSquare className="h-5 w-5" />
+            <span className="text-[10px] font-medium">채팅</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("participants")}
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+              activeTab === "participants"
+                ? "text-primary bg-primary/10"
+                : "text-black/60 hover:text-black/80"
+            }`}
+          >
+            <Users className="h-5 w-5" />
+            <span className="text-[10px] font-medium">인원</span>
+          </button>
+          </div>
+        </div>
+      </div>
+
 
       {/* 회고 작성 다이얼로그 */}
       <ReflectionDialog

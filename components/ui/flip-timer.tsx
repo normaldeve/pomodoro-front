@@ -346,7 +346,7 @@ export function FlipTimer({
             }}
           />
           <span
-            className="text-2xl font-medium font-sans"
+            className="text-xl font-medium font-sans"
             style={{ color: colors.text }}
           >
             {phaseTitle}
