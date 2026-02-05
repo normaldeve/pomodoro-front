@@ -1287,7 +1287,7 @@ function HomePageInner() {
       {/* 하단 탭 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
         <div className="w-full max-w-2xl rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]">
-          <div className="flex items-center justify-around px-2 py-2">
+          <div className="grid grid-cols-5 items-center px-2 py-2">
             {/* 홈 */}
             <button
               type="button"
@@ -1316,21 +1316,23 @@ function HomePageInner() {
               <span className="text-[10px] font-medium">랭킹</span>
             </button>
 
-            {/* 방 만들기 - 유튜브 스타일 + 버튼 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (isLoggedIn) {
-                  setIsCreateRoomDialogOpen(true)
-                } else {
-                  setIsLoginModalOpen(true)
-                }
-              }}
-              className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-white shadow-lg shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors -mt-6 cursor-pointer"
-              aria-label="새 공부방 만들기"
-            >
-              <Plus className="h-6 w-6" />
-            </button>
+            {/* 방 만들기 - 유튜브 스타일 + 버튼 (정중앙) */}
+            <div className="flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isLoggedIn) {
+                    setIsCreateRoomDialogOpen(true)
+                  } else {
+                    setIsLoginModalOpen(true)
+                  }
+                }}
+                className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-white shadow-lg shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors -mt-6 cursor-pointer"
+                aria-label="새 공부방 만들기"
+              >
+                <Plus className="h-6 w-6" />
+              </button>
+            </div>
 
             {/* 공부 기록 */}
             <button
