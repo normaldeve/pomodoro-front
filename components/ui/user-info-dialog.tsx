@@ -13,8 +13,8 @@ import { Label } from "./label"
 import { Button } from "./button"
 import { Switch } from "./switch"
 import { CustomScrollbar } from "./custom-scrollbar"
-import { User, Bell, Camera, MessageSquare } from "lucide-react"
-import { updateUserInfo, getCurrentUser } from "@/lib/api"
+import { User, Bell, Camera, MessageSquare, DoorOpen } from "lucide-react"
+import { updateUserInfo, getCurrentUser, logoutApi } from "@/lib/api"
 import { showSuccessNotification } from "@/lib/system-notification"
 
 export interface UserInfoDialogProps {
@@ -247,14 +247,36 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
                   />
                 </div>
 
-                <div className="flex justify-end mt-4">
-                  <Button
-                  className="bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={handleSaveProfile}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? "저장 중..." : "저장"}
-                  </Button>
+                <div className="flex flex-col gap-3 mt-4">
+                  <div className="flex justify-end">
+                    <Button
+                      className="bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleSaveProfile}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? "저장 중..." : "저장"}
+                    </Button>
+                  </div>
+                  <div className="border-t border-gray-200 pt-4">
+                    <Button
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
+                      onClick={async () => {
+                        try {
+                          await logoutApi()
+                        } catch (error) {
+                          console.error("Logout error:", error)
+                        }
+                        // API 호출 실패해도 로컬 상태 정리
+                        localStorage.removeItem("accessToken")
+                        localStorage.removeItem("user")
+                        onOpenChange(false)
+                        window.location.href = '/'
+                      }}
+                    >
+                      <DoorOpen className="w-4 h-4 mr-2" />
+                      로그아웃
+                    </Button>
+                  </div>
                 </div>
               </div>
             </TabsContent>

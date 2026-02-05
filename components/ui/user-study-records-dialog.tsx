@@ -236,73 +236,23 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
 
           <CustomScrollbar className="flex-1 overflow-y-auto min-h-0">
             <TabsContent value="mypomo" className="mt-0">
-              <div className="flex flex-col gap-6 px-2">
-                {/* 포인트 표시 */}
-                <div className="flex flex-col items-center gap-4 p-6 rounded-2xl bg-gradient-to-br from-white/60 via-white/40 to-white/20 backdrop-blur-xl border border-white/50 shadow-lg relative">
-                  {/* 도움말 아이콘 - 오른쪽 상단 */}
-                  <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-black/20 bg-white text-[10px] text-black/70 hover:bg-black/5 cursor-pointer"
-                          aria-label="포인트란?"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                            }
-                          }}
-                        >
-                          ?
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <div className="text-xs text-left leading-relaxed">
-                          <p>
-                            나의 포인트는 매 주 초기화 됩니다.
-                          </p>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold" style={{ color: colors.text }}>
-                      나의 포인트
-                    </h3>
-                  </div>
-                  <div className="text-4xl font-bold" style={{ color: colors.main }}>
-                    {myPomoData.points.toLocaleString()}점
-                  </div>
-                </div>
-
-                {/* 캐릭터 표시 */}
-                <div className="flex flex-col items-center gap-4 p-6 rounded-2xl bg-gradient-to-br from-white/60 via-white/40 to-white/20 backdrop-blur-xl border border-white/50 shadow-lg">
+              <div className="flex flex-col items-center justify-center gap-6 px-2 py-12">
+                <Image
+                  src="/images/home_icon.png"
+                  alt="개발 중 안내 아이콘"
+                  width={80}
+                  height={80}
+                  className="w-20 h-20 object-contain"
+                />
+                <div className="flex flex-col items-center gap-2 text-center">
                   <h3 className="text-lg font-semibold" style={{ color: colors.text }}>
-                    나의 뽀모 캐릭터
+                    나의 뽀모도 기능 개발 중
                   </h3>
-                  <div className="relative">
-                    <Image
-                      src={getLevelImagePath(myPomoData.level)}
-                      alt={`레벨 ${myPomoData.level} 뽀모`}
-                      width={200}
-                      height={200}
-                      className="object-contain"
-                      style={{
-                        filter: "drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15))",
-                      }}
-                    />
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold mb-1" style={{ color: colors.main }}>
-                      레벨 {myPomoData.level}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {myPomoData.level === 5 
-                        ? "최고 레벨에 도달했어요! 🎉"
-                        : `다음 레벨까지 열심히 공부해봐요!`}
-                    </div>
-                  </div>
+                  <p className="text-sm text-gray-600">
+                    나의 뽀모도 기능은 현재 개발 중이에요.
+                    <br />
+                    곧 만나볼 수 있을 거예요!
+                  </p>
                 </div>
               </div>
             </TabsContent>

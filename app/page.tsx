@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, Suspense, useCallback } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import dynamic from "next/dynamic"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -19,11 +19,7 @@ const PomodoroDialStatic = dynamic(() => import("@/components/ui/pomodoro-dial-s
 const FlipTimerStatic = dynamic(() => import("@/components/ui/flip-timer-static").then((mod) => mod.FlipTimerStatic), {
   ssr: false,
 })
-import { DoorOpen, Plus, Search, User, Lock, X, Trophy, HelpCircle, Clock, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react"
-// Popover는 필요할 때만 로드
-const Popover = dynamic(() => import("@/components/ui/popover").then((mod) => mod.Popover), { ssr: false })
-const PopoverContent = dynamic(() => import("@/components/ui/popover").then((mod) => mod.PopoverContent), { ssr: false })
-const PopoverTrigger = dynamic(() => import("@/components/ui/popover").then((mod) => mod.PopoverTrigger), { ssr: false })
+import { DoorOpen, Plus, Search, User, Lock, X, Trophy, HelpCircle, Clock, ChevronLeft, ChevronRight, RefreshCw, Home } from "lucide-react"
 const CustomScrollbar = dynamic(() => import("@/components/ui/custom-scrollbar").then((mod) => mod.CustomScrollbar), { ssr: false })
 import {
   Dialog,
@@ -106,11 +102,11 @@ function mapToStudyRoom(response: StudyRoomListResponse): StudyRoom {
 
 function HomePageInner() {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const [isLoggedIn, setIsLoggedIn] = useState(false) // 로그인 상태 관리
   const [user, setUser] = useState<{ id: number; username: string; nickname: string; profileUrl: string | null; role: string } | null>(null) // 사용자 정보
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false) // 로그인 모달 상태
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false) // 사용자 메뉴 열림 상태
   const [isUserInfoDialogOpen, setIsUserInfoDialogOpen] = useState(false) // 내 정보 다이얼로그 상태
   const [isLoaded, setIsLoaded] = useState(false)
   const [showHeader, setShowHeader] = useState(false)
@@ -275,7 +271,7 @@ function HomePageInner() {
 
   return (
     <div
-      className="min-h-screen flex items-stretch justify-center px-6 pt-3 pb-6 md:px-10 md:pt-4 md:pb-10"
+      className="min-h-screen flex items-stretch justify-center px-6 pt-3 pb-20 md:px-10 md:pt-4 md:pb-24"
       style={{
         // 가장 뒷 배경을 #fff8ea 베이지 톤으로 설정
         backgroundColor: "#fff8ea",
@@ -284,7 +280,7 @@ function HomePageInner() {
       }}
     >
       {/* Header + Main content wrapper */}
-      <div className="relative z-10 flex w-full max-w-2xl flex-col gap-8">
+      <div className="relative z-10 flex w-full max-w-2xl flex-col gap-4">
         {/* Header */}
         <header
           className="relative flex items-center justify-between gap-4 py-3 text-xs md:text-sm text-black transition-all duration-700 ease-out h-[50px]"
@@ -321,117 +317,9 @@ function HomePageInner() {
             </span>
           </button>
 
-          {/* Right: 프로필 또는 로그인 버튼 */}
+          {/* Right: 로그인 버튼 (로그인하지 않은 경우만 표시) */}
           <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-            {isLoggedIn ? (
-              <>
-                {/* 랭킹 버튼 */}
-                <button 
-                  onClick={() => router.push("/ranking")}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white text-xs font-semibold text-black shadow-sm hover:bg-black/5 transition-colors"
-                >
-                  <Trophy className="h-4 w-4 text-black" />
-                </button>
-                <Popover open={isUserMenuOpen} onOpenChange={setIsUserMenuOpen}>
-                  <PopoverTrigger asChild>
-                    <button className="flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white text-xs font-semibold text-black shadow-sm hover:bg-black/5 transition-colors">
-                      <User className="h-4 w-4 text-black" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-64 p-0 rounded-2xl"
-                    align="end"
-                    sideOffset={8}
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.9))",
-                      backdropFilter: "blur(20px) saturate(180%)",
-                      boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15)",
-                      border: "1px solid rgba(255, 255, 255, 0.8)",
-                    }}
-                  >
-                    {/* 내 정보 섹션 */}
-                    <div className="px-4 py-4 border-b border-gray-200">
-                      {(() => {
-                        // 사용자 메뉴가 열릴 때마다 localStorage에서 최신 정보 가져오기
-                        const currentUser = user
-                        return (
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-12 h-12 rounded-full border-2 border-white/80 shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center overflow-hidden"
-                              style={{ backgroundColor: "#c5d4c0" }}
-                            >
-                              {currentUser?.profileUrl ? (
-                                <img
-                                  src={currentUser.profileUrl}
-                                  alt="프로필"
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <User className="w-6 h-6" style={{ color: "#2c5f2d" }} />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 truncate">
-                                {currentUser?.nickname || "사용자"}
-                              </p>
-                              <p className="text-xs text-gray-500 truncate">
-                                {currentUser?.username ? `ID: ${currentUser.username}` : ""}
-                              </p>
-                            </div>
-                          </div>
-                        )
-                      })()}
-                    </div>
-
-                    {/* 메뉴 항목 */}
-                    <div className="py-2">
-                      <button
-                        className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-3"
-                        onClick={() => {
-                          setIsUserInfoDialogOpen(true)
-                          setIsUserMenuOpen(false)
-                        }}
-                      >
-                        <User className="w-4 h-4" />
-                        <span>내 정보</span>
-                      </button>
-                      <button
-                        className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-3"
-                        onClick={() => {
-                          setIsUserStudyDialogOpen(true)
-                          setIsUserMenuOpen(false)
-                        }}
-                      >
-                        <Clock className="w-4 h-4" />
-                        <span>공부 기록</span>
-                      </button>
-                      <button
-                        className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3"
-                        onClick={async () => {
-                          setIsUserMenuOpen(false)
-                          // 로그아웃 API 호출
-                          try {
-                            await logoutApi()
-                          } catch (error) {
-                            console.error("Logout error:", error)
-                            // API 호출 실패해도 로컬 상태 정리
-                            setIsLoggedIn(false)
-                            setUser(null)
-                            localStorage.removeItem("accessToken")
-                            localStorage.removeItem("user")
-                            window.location.href = '/'
-                          }
-                        }}
-                      >
-                        <DoorOpen className="w-4 h-4" />
-                        <span>로그아웃</span>
-                      </button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </>
-            ) : (
+            {!isLoggedIn && (
               <button
                 onClick={() => setIsLoginModalOpen(true)}
                 className="px-4 py-2 rounded-full border border-black/10 bg-white text-xs md:text-sm font-semibold text-black shadow-sm hover:bg-black/5 transition-colors"
@@ -455,7 +343,7 @@ function HomePageInner() {
                 }}
               >
                 {/* 첫 번째 배너 */}
-                <div className="min-w-full h-full flex-shrink-0">
+                <div className="w-full h-full flex-shrink-0">
                   <Image
                     src="/banners/banner_main.png"
                     alt="배너 1"
@@ -466,7 +354,7 @@ function HomePageInner() {
                   />
                 </div>
                 {/* 두 번째 배너 */}
-                <div className="min-w-full h-full flex-shrink-0">
+                <div className="w-full h-full flex-shrink-0">
                   <Image
                     src="/banners/banner_new_year.png"
                     alt="배너 2"
@@ -557,12 +445,12 @@ function HomePageInner() {
                       </button>
                     </div>
                     {/* 검색창 */}
-                    <div className="relative w-full md:w-[280px] lg:w-[360px]">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/60" />
+                    <div className="relative w-full md:w-[240px] lg:w-[280px]">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-black/60" />
                       <input
                         type="text"
                         placeholder="스터디 이름이나 태그로 검색해보세요!"
-                        className="w-full rounded-full bg-transparent border border-black/10 py-2 pl-9 pr-4 text-xs md:text-sm text-black placeholder:text-black/40 outline-none shadow-sm focus:bg-white focus:border-black/30 transition-colors"
+                        className="w-full rounded-full bg-transparent border border-black/10 py-1.5 pl-8 pr-3 text-xs text-black placeholder:text-black/40 outline-none shadow-sm focus:bg-white focus:border-black/30 transition-colors"
                       />
                     </div>
                   </div>
@@ -1396,16 +1284,82 @@ function HomePageInner() {
         </DialogContent>
       </Dialog>
 
-      {/* Floating action button: 새 공부방 생성 (+ 아이콘 + 텍스트) */}
-      <button
-        type="button"
-        aria-label="새 공부방 만들기"
-        onClick={() => setIsCreateRoomDialogOpen(true)}
-        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-40 flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-full bg-primary text-white shadow-xl shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors text-[11px] md:text-xs font-medium cursor-pointer"
-      >
-        <Plus className="h-5 w-5 md:h-6 md:w-6" />
-        <span>방 생성</span>
-      </button>
+      {/* 하단 탭 바 */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-4">
+        <div className="w-full max-w-2xl rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]">
+          <div className="flex items-center justify-around px-2 py-2">
+            {/* 홈 */}
+            <button
+              type="button"
+              onClick={() => router.push("/")}
+              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                pathname === "/"
+                  ? "text-primary bg-primary/10"
+                  : "text-black/60 hover:text-black/80"
+              }`}
+            >
+              <Home className="h-5 w-5" />
+              <span className="text-[10px] font-medium">홈</span>
+            </button>
+
+            {/* 랭킹 */}
+            <button
+              type="button"
+              onClick={() => router.push("/ranking")}
+              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                pathname === "/ranking"
+                  ? "text-primary bg-primary/10"
+                  : "text-black/60 hover:text-black/80"
+              }`}
+            >
+              <Trophy className="h-5 w-5" />
+              <span className="text-[10px] font-medium">랭킹</span>
+            </button>
+
+            {/* 방 만들기 - 유튜브 스타일 + 버튼 */}
+            <button
+              type="button"
+              onClick={() => setIsCreateRoomDialogOpen(true)}
+              className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-white shadow-lg shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors -mt-6 cursor-pointer"
+              aria-label="새 공부방 만들기"
+            >
+              <Plus className="h-6 w-6" />
+            </button>
+
+            {/* 공부 기록 */}
+            <button
+              type="button"
+              onClick={() => {
+                if (isLoggedIn) {
+                  setIsUserStudyDialogOpen(true)
+                } else {
+                  setIsLoginModalOpen(true)
+                }
+              }}
+              className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-black/60 hover:text-black/80 cursor-pointer"
+            >
+              <Clock className="h-5 w-5" />
+              <span className="text-[10px] font-medium">공부 기록</span>
+            </button>
+
+            {/* 나의 정보 */}
+            <button
+              type="button"
+              onClick={() => {
+                if (isLoggedIn) {
+                  setIsUserInfoDialogOpen(true)
+                } else {
+                  setIsLoginModalOpen(true)
+                }
+              }}
+              className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-black/60 hover:text-black/80 cursor-pointer"
+            >
+              <User className="h-5 w-5" />
+              <span className="text-[10px] font-medium">나의 정보</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* 로그인 모달 */}
       <LoginModal

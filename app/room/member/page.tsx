@@ -811,13 +811,13 @@ function MemberRoomPageInner() {
       </Dialog>
 
       {/* 하단 탭 바 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
-        <div className="w-full max-w-2xl bg-white/80 backdrop-blur-xl border-t border-white/60 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-4">
+        <div className="w-full max-w-2xl rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]">
           <div className="flex items-center justify-around px-2 py-2">
           <button
             type="button"
             onClick={() => setActiveTab("timer")}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
               activeTab === "timer"
                 ? "text-primary bg-primary/10"
                 : "text-black/60 hover:text-black/80"
@@ -829,7 +829,7 @@ function MemberRoomPageInner() {
           <button
             type="button"
             onClick={() => setActiveTab("goals")}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
               activeTab === "goals"
                 ? "text-primary bg-primary/10"
                 : "text-black/60 hover:text-black/80"
@@ -841,7 +841,7 @@ function MemberRoomPageInner() {
           <button
             type="button"
             onClick={() => setActiveTab("reflection")}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
               activeTab === "reflection"
                 ? "text-primary bg-primary/10"
                 : "text-black/60 hover:text-black/80"
@@ -853,7 +853,7 @@ function MemberRoomPageInner() {
           <button
             type="button"
             onClick={() => setActiveTab("chat")}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
               activeTab === "chat"
                 ? "text-primary bg-primary/10"
                 : "text-black/60 hover:text-black/80"
@@ -865,7 +865,7 @@ function MemberRoomPageInner() {
           <button
             type="button"
             onClick={() => setActiveTab("participants")}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
               activeTab === "participants"
                 ? "text-primary bg-primary/10"
                 : "text-black/60 hover:text-black/80"

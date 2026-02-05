@@ -233,29 +233,38 @@ function SessionSummaryPageInner() {
 
         {/* 목표 달성 현황 */}
         <section
-          className="mb-6 rounded-3xl bg-gradient-to-br from-white/80 via-white/65 to-white/45 backdrop-blur-3xl border border-white/70 shadow-[0_20px_60px_rgba(0,0,0,0.14)] px-6 py-6 transition-all duration-700 ease-out"
+          className="mb-4 transition-all duration-700 ease-out"
           style={{
             opacity: showSection2 ? 1 : 0,
             transform: showSection2 ? "translateY(0)" : "translateY(20px)",
           }}
         >
-          <div className="flex items-center gap-3 mb-4">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{
-                background: colors.main,
-                boxShadow: `0 0 10px ${colors.shadow}`,
-              }}
-            />
+          <div className="mb-4">
             <h2 className="text-base font-semibold font-sans" style={{ color: colors.text }}>
               오늘의 목표
             </h2>
-            <span className="text-xs font-sans ml-auto" style={{ color: colors.textLight }}>
-              달성률 {completionRate}%
-            </span>
+            <p className="text-xs font-sans mt-1" style={{ color: colors.textLight }}>
+              오늘 완료한 목표, 완료하지 못한 목표를 확인해보세요
+            </p>
           </div>
+          <div className="rounded-3xl bg-gradient-to-br from-white/80 via-white/65 to-white/45 backdrop-blur-3xl border border-white/70 shadow-[0_20px_60px_rgba(0,0,0,0.14)] px-6 py-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{
+                  background: colors.main,
+                  boxShadow: `0 0 10px ${colors.shadow}`,
+                }}
+              />
+              <h3 className="text-base font-semibold font-sans" style={{ color: colors.text }}>
+                목표
+              </h3>
+              <span className="text-xs font-sans ml-auto" style={{ color: colors.textLight }}>
+                달성률 {completionRate}%
+              </span>
+            </div>
 
-          <div className="space-y-4">
+            <div className="space-y-4">
             {isLoading ? (
               <div className="flex items-center justify-center py-4">
                 <div className="text-xs font-sans" style={{ color: colors.textLight }}>
@@ -339,6 +348,7 @@ function SessionSummaryPageInner() {
                 )}
               </>
             )}
+            </div>
           </div>
         </section>
 
@@ -373,7 +383,7 @@ function SessionSummaryPageInner() {
 
         {/* 수고했다는 메시지 */}
         <section
-          className="rounded-3xl bg-gradient-to-br from-white/80 via-white/65 to-white/45 backdrop-blur-3xl border border-white/70 shadow-[0_20px_60px_rgba(0,0,0,0.14)] px-8 py-10 flex flex-col items-center text-center transition-all duration-700 ease-out"
+          className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-8 py-10 flex flex-col items-center text-center transition-all duration-700 ease-out"
           style={{
             opacity: showSection4 ? 1 : 0,
             transform: showSection4 ? "translateY(0) scale(1)" : "translateY(20px) scale(0.95)",
