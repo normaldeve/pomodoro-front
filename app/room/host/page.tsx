@@ -27,7 +27,7 @@ import { useStudyRoomWebSocket } from "@/hooks/use-study-room-websocket"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound-notification"
-import { Volume2, VolumeX, MessageSquare, Clock, Target, BookOpen, Users } from "lucide-react"
+import { Volume2, VolumeX, MessageSquare, Clock, BookOpen, Users } from "lucide-react"
 
 // 초를 00:00 형식으로 변환하는 함수
 const formatTime = (seconds: number): string => {
@@ -47,7 +47,9 @@ function HostRoomPageInner() {
   const [isHostTransferredDialogOpen, setIsHostTransferredDialogOpen] = useState(false)
   const [hostTransferredMessage, setHostTransferredMessage] = useState<string>("")
   const [isTransferHostDialogOpen, setIsTransferHostDialogOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<"timer" | "goals" | "reflection" | "chat" | "participants">("timer")
+  const [activeTab, setActiveTab] = useState<"timer" | "reflection">("timer")
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isParticipantsOpen, setIsParticipantsOpen] = useState(false)
   const [transferTargetUserId, setTransferTargetUserId] = useState<number | null>(null)
   const [transferTargetNickname, setTransferTargetNickname] = useState<string>("")
   const [currentReflectionSessionId, setCurrentReflectionSessionId] = useState<number | null>(null)
@@ -604,20 +606,6 @@ function HostRoomPageInner() {
                 {roomInfo?.title || ""}
               </h1>
             </div>
-            {/* 나가기 버튼 */}
-            <button
-              type="button"
-              aria-label="방 나가기"
-              onClick={() => setIsExitDialogOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors flex-shrink-0"
-              style={{
-                backgroundColor: "#2c5f2d",
-                color: "white",
-              }}
-            >
-              <DoorClosed className="w-4 h-4" />
-              <span className="text-xs font-medium">나가기</span>
-            </button>
           </div>
         </section>
 
@@ -656,105 +644,203 @@ function HostRoomPageInner() {
                 </span>
               )}
 
-              {/* 소리 on/off 토글 */}
+              {/* 우측: 채팅/인원 아이콘 + 소리 on/off 토글 */}
               <div className="flex items-center gap-2 ml-auto">
-                {soundEnabled ? (
-                  <Volume2 className="w-4 h-4 text-black/70" />
-                ) : (
-                  <VolumeX className="w-4 h-4 text-black/50" />
-                )}
-                <Label htmlFor="sound-toggle" className="text-xs text-black/70 cursor-pointer">
-                  시계 소리
-                </Label>
-                <Switch
-                  id="sound-toggle"
-                  checked={soundEnabled}
-                  onCheckedChange={(checked) => {
-                    setSoundEnabledState(checked)
-                    setSoundEnabled(checked)
+                {/* 채팅 토글 아이콘 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsChatOpen((prev) => !prev)
+                    if (!isChatOpen) setIsParticipantsOpen(false)
                   }}
-                />
+                  className={`p-1.5 rounded-full border transition-colors ${
+                    isChatOpen ? "bg-black text-white border-black" : "bg-white/70 text-black/70 border-black/10"
+                  }`}
+                  aria-label="채팅 열기"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                </button>
+
+                {/* 인원 토글 아이콘 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsParticipantsOpen((prev) => !prev)
+                    if (!isParticipantsOpen) setIsChatOpen(false)
+                  }}
+                  className={`p-1.5 rounded-full border transition-colors ${
+                    isParticipantsOpen ? "bg-black text-white border-black" : "bg-white/70 text-black/70 border-black/10"
+                  }`}
+                  aria-label="참여자 목록 열기"
+                >
+                  <Users className="w-4 h-4" />
+                </button>
+
+                {/* 소리 on/off 토글 */}
+                <div className="flex items-center gap-2">
+                  {soundEnabled ? (
+                    <Volume2 className="w-4 h-4 text-black/70" />
+                  ) : (
+                    <VolumeX className="w-4 h-4 text-black/50" />
+                  )}
+                  <Label htmlFor="sound-toggle" className="text-xs text-black/70 cursor-pointer">
+                    시계 소리
+                  </Label>
+                  <Switch
+                    id="sound-toggle"
+                    checked={soundEnabled}
+                    onCheckedChange={(checked) => {
+                      setSoundEnabledState(checked)
+                      setSoundEnabled(checked)
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </section>
         )}
+        
+        {/* 플로팅 패널: 채팅 / 참여자 목록 (하단 탭 너비 기준 오른쪽 하단) */}
+        {roomInfo && (
+          <div className="pointer-events-none fixed inset-x-0 bottom-20 md:bottom-24 z-40 flex justify-center">
+            <div className="w-full max-w-2xl px-4 flex flex-col items-end gap-3">
+            {/* 채팅 패널 */}
+            <div
+              className={`transition-all duration-300 overflow-hidden w-full flex justify-end ${
+                isChatOpen ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
+              }`}
+            >
+              <div
+                className="pointer-events-auto rounded-3xl bg-gradient-to-br from-[#e4f3e6]/95 via-[#d3e7d6]/90 to-[#c2dbc7]/90 backdrop-blur-3xl border border-white/50 overflow-hidden min-h-[420px] max-h-[calc(100vh-140px)] flex flex-col w-full max-w-xs md:max-w-sm"
+              >
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <LiquidChat
+                    messages={liquidChatMessages}
+                    currentUserName={currentUser?.nickname || participants[0]?.nickname || "사용자"}
+                    onSend={(message: string) => {
+                      if (currentUser?.id) {
+                        sendChatMessage(message, currentUser.id)
+                      }
+                    }}
+                    onLoadMore={handleLoadMore}
+                    hasMore={hasMoreMessages}
+                    isLoadingMore={isLoadingMessages}
+                    isInitialLoadComplete={isInitialLoadComplete}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 참여자 패널 */}
+            <div
+              className={`transition-all duration-300 overflow-hidden w-full flex justify-end ${
+                isParticipantsOpen ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
+              }`}
+            >
+              <div className="pointer-events-auto rounded-3xl bg-gradient-to-br from-[#e4f3e6]/95 via-[#d3e7d6]/90 to-[#c2dbc7]/90 backdrop-blur-3xl border border-white/50 overflow-hidden h-[340px] w-full max-w-xs md:max-w-sm">
+                <ParticipantsList 
+                  participants={participants} 
+                  isLoading={isLoadingParticipants}
+                  isHost={true}
+                  onTransferHost={(userId) => {
+                    const targetParticipant = participants.find(p => p.userId === userId)
+                    if (targetParticipant) {
+                      setTransferTargetUserId(userId)
+                      setTransferTargetNickname(targetParticipant.nickname)
+                      setIsTransferHostDialogOpen(true)
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        )}
 
         {/* 메인 콘텐츠 */}
         <main className="relative flex flex-col gap-4 md:gap-6 pb-16">
-          {/* 타이머 탭 */}
+          {/* 타이머 + 목표 탭 */}
           {activeTab === "timer" && (
-            <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-6 md:px-8 md:py-6 flex items-center justify-center overflow-hidden w-full">
-              {roomInfo?.timerType === TimerType.FLIP ? (
-                <div className="w-full max-w-full flex items-center justify-center scale-65 md:scale-75">
-                  <FlipTimer
-                  disabled={false}
-                  defaultMinutes={roomInfo?.focusMinutes || 25}
-                  currentSession={1}
-                  totalSessions={roomInfo?.totalSessions || 4}
-                  externalTimerState={timerState}
-                  roomStatus={roomInfo?.status}
-                  onDragStart={() => sendDialDrag("DIAL_DRAG_START", 0)}
-                  onDragMove={(minutes) => sendDialDrag("DIAL_DRAG_MOVE", minutes)}
-                  onDragEnd={(minutes) => sendDialDrag("DIAL_DRAG_END", minutes)}
-                  onStart={(minutes) => {
-                    if (roomInfo) {
-                      sendTimerStart({
-                        focusMinutes: minutes,
-                        breakMinutes: roomInfo.breakMinutes,
-                        totalSessions: roomInfo.totalSessions,
-                      })
-                    }
-                  }}
-                  onPause={() => {
-                    sendTimerPause()
-                  }}
-                  onResume={() => {
-                    sendTimerResume()
-                  }}
-                  onNextFocusMinutesSet={(minutes) => {
-                    sendNextFocusMinutes(minutes)
-                  }}
-                  />
+            <>
+              {/* 타이머 카드 */}
+              <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-6 md:px-8 md:py-6 flex flex-col items-center justify-center gap-4 overflow-hidden w-full min-h-[500px] md:min-h-[540px]">
+                {/* 타이머 영역 - 포모도로/플립 공통 높이 */}
+                <div className="w-full h-[480px] flex items-center justify-center">
+                  {roomInfo?.timerType === TimerType.FLIP ? (
+                    <div className="w-full max-w-full h-full flex items-center justify-center">
+                      <FlipTimer
+                        disabled={false}
+                        defaultMinutes={roomInfo?.focusMinutes || 25}
+                        currentSession={1}
+                        totalSessions={roomInfo?.totalSessions || 4}
+                        externalTimerState={timerState}
+                        roomStatus={roomInfo?.status}
+                        onDragStart={() => sendDialDrag("DIAL_DRAG_START", 0)}
+                        onDragMove={(minutes) => sendDialDrag("DIAL_DRAG_MOVE", minutes)}
+                        onDragEnd={(minutes) => sendDialDrag("DIAL_DRAG_END", minutes)}
+                        onStart={(minutes) => {
+                          if (roomInfo) {
+                            sendTimerStart({
+                              focusMinutes: minutes,
+                              breakMinutes: roomInfo.breakMinutes,
+                              totalSessions: roomInfo.totalSessions,
+                            })
+                          }
+                        }}
+                        onPause={() => {
+                          sendTimerPause()
+                        }}
+                        onResume={() => {
+                          sendTimerResume()
+                        }}
+                        onNextFocusMinutesSet={(minutes) => {
+                          sendNextFocusMinutes(minutes)
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full max-w-full h-full flex items-center justify-center">
+                      <PomodoroTimer
+                        disabled={false}
+                        defaultMinutes={roomInfo?.focusMinutes || 25}
+                        currentSession={1}
+                        totalSessions={roomInfo?.totalSessions || 4}
+                        externalTimerState={timerState}
+                        roomStatus={roomInfo?.status}
+                        onDragStart={() => sendDialDrag("DIAL_DRAG_START", 0)}
+                        onDragMove={(minutes) => sendDialDrag("DIAL_DRAG_MOVE", minutes)}
+                        onDragEnd={(minutes) => sendDialDrag("DIAL_DRAG_END", minutes)}
+                        onStart={(minutes) => {
+                          if (roomInfo) {
+                            sendTimerStart({
+                              focusMinutes: minutes,
+                              breakMinutes: roomInfo.breakMinutes,
+                              totalSessions: roomInfo.totalSessions,
+                            })
+                          }
+                        }}
+                        onPause={() => {
+                          sendTimerPause()
+                        }}
+                        onResume={() => {
+                          sendTimerResume()
+                        }}
+                        onNextFocusMinutesSet={(minutes) => {
+                          sendNextFocusMinutes(minutes)
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <PomodoroTimer
-                  disabled={false}
-                  defaultMinutes={roomInfo?.focusMinutes || 25}
-                  currentSession={1}
-                  totalSessions={roomInfo?.totalSessions || 4}
-                  externalTimerState={timerState}
-                  roomStatus={roomInfo?.status}
-                  onDragStart={() => sendDialDrag("DIAL_DRAG_START", 0)}
-                  onDragMove={(minutes) => sendDialDrag("DIAL_DRAG_MOVE", minutes)}
-                  onDragEnd={(minutes) => sendDialDrag("DIAL_DRAG_END", minutes)}
-                  onStart={(minutes) => {
-                    if (roomInfo) {
-                      sendTimerStart({
-                        focusMinutes: minutes,
-                        breakMinutes: roomInfo.breakMinutes,
-                        totalSessions: roomInfo.totalSessions,
-                      })
-                    }
-                  }}
-                  onPause={() => {
-                    sendTimerPause()
-                  }}
-                  onResume={() => {
-                    sendTimerResume()
-                  }}
-                  onNextFocusMinutesSet={(minutes) => {
-                    sendNextFocusMinutes(minutes)
-                  }}
-                />
-              )}
-            </div>
-          )}
+              </div>
 
-          {/* 목표 탭 */}
-          {activeTab === "goals" && (
-            <div className="w-full h-[calc(100vh-280px)] min-h-[500px]">
-              {roomInfo && <GoalsList roomId={roomInfo.roomId} roomStatus={roomInfo.status} />}
-            </div>
+              {/* 목표 카드 - 타이머 종류와 관계없이 동일 위치/높이 */}
+              {roomInfo && (
+                <div className="w-full mt-4 h-[320px] md:h-[360px]">
+                  <GoalsList roomId={roomInfo.roomId} roomStatus={roomInfo.status} />
+                </div>
+              )}
+            </>
           )}
 
           {/* 회고 탭 */}
@@ -779,48 +865,52 @@ function HostRoomPageInner() {
             </div>
           )}
 
-          {/* 채팅 탭 */}
-          {activeTab === "chat" && (
-            <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] overflow-hidden w-full h-[calc(100vh-280px)] min-h-[500px] flex flex-col">
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <LiquidChat
-                  messages={liquidChatMessages}
-                  currentUserName={currentUser?.nickname || participants[0]?.nickname || "사용자"}
-                  onSend={(message: string) => {
-                    if (currentUser?.id) {
-                      sendChatMessage(message, currentUser.id)
-                    }
-                  }}
-                  onLoadMore={handleLoadMore}
-                  hasMore={hasMoreMessages}
-                  isLoadingMore={isLoadingMessages}
-                  isInitialLoadComplete={isInitialLoadComplete}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* 인원 탭 */}
-          {activeTab === "participants" && (
-            <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] overflow-hidden w-full h-[calc(100vh-280px)] min-h-[500px]">
-              <ParticipantsList 
-                participants={participants} 
-                isLoading={isLoadingParticipants}
-                isHost={true}
-                onTransferHost={(userId) => {
-                  const targetParticipant = participants.find(p => p.userId === userId)
-                  if (targetParticipant) {
-                    setTransferTargetUserId(userId)
-                    setTransferTargetNickname(targetParticipant.nickname)
-                    setIsTransferHostDialogOpen(true)
-                  }
-                }}
-              />
-            </div>
-          )}
-
-
         </main>
+      </div>
+
+      {/* 하단 탭 바 */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
+        <div className="w-full max-w-2xl rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]">
+          <div className="flex items-center justify-around px-2 py-2">
+            {/* 타이머 탭 */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("timer")}
+              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                activeTab === "timer"
+                  ? "text-primary bg-primary/10"
+                  : "text-black/60 hover:text-black/80"
+              }`}
+            >
+              <Clock className="h-5 w-5" />
+              <span className="text-[10px] font-medium">타이머</span>
+            </button>
+
+            {/* 나가기 - 중앙 플로팅 버튼 */}
+            <button
+              type="button"
+              onClick={() => setIsExitDialogOpen(true)}
+              className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-white shadow-lg shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors -mt-6 cursor-pointer"
+              aria-label="방 나가기"
+            >
+              <DoorClosed className="h-6 w-6" />
+            </button>
+
+            {/* 회고 탭 */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("reflection")}
+              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                activeTab === "reflection"
+                  ? "text-primary bg-primary/10"
+                  : "text-black/60 hover:text-black/80"
+              }`}
+            >
+              <BookOpen className="h-5 w-5" />
+              <span className="text-[10px] font-medium">회고</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* 방 생성 후 환영 다이얼로그 */}
@@ -922,75 +1012,6 @@ function HostRoomPageInner() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* 하단 탭 바 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
-        <div className="w-full max-w-2xl rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]">
-          <div className="flex items-center justify-around px-2 py-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab("timer")}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              activeTab === "timer"
-                ? "text-primary bg-primary/10"
-                : "text-black/60 hover:text-black/80"
-            }`}
-          >
-            <Clock className="h-5 w-5" />
-            <span className="text-[10px] font-medium">타이머</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("goals")}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              activeTab === "goals"
-                ? "text-primary bg-primary/10"
-                : "text-black/60 hover:text-black/80"
-            }`}
-          >
-            <Target className="h-5 w-5" />
-            <span className="text-[10px] font-medium">목표</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("reflection")}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              activeTab === "reflection"
-                ? "text-primary bg-primary/10"
-                : "text-black/60 hover:text-black/80"
-            }`}
-          >
-            <BookOpen className="h-5 w-5" />
-            <span className="text-[10px] font-medium">회고</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("chat")}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              activeTab === "chat"
-                ? "text-primary bg-primary/10"
-                : "text-black/60 hover:text-black/80"
-            }`}
-          >
-            <MessageSquare className="h-5 w-5" />
-            <span className="text-[10px] font-medium">채팅</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("participants")}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              activeTab === "participants"
-                ? "text-primary bg-primary/10"
-                : "text-black/60 hover:text-black/80"
-            }`}
-          >
-            <Users className="h-5 w-5" />
-            <span className="text-[10px] font-medium">인원</span>
-          </button>
-          </div>
-        </div>
-      </div>
-
 
       {/* 회고 작성 다이얼로그 */}
       <ReflectionDialog
