@@ -349,7 +349,7 @@ function HomePageInner() {
                     alt="배너 1"
                     width={1200}
                     height={300}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain md:object-cover"
                     priority
                   />
                 </div>
@@ -360,7 +360,7 @@ function HomePageInner() {
                     alt="배너 2"
                     width={1200}
                     height={300}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain md:object-cover"
                   />
                 </div>
               </div>
