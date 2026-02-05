@@ -50,6 +50,8 @@ function HostRoomPageInner() {
   const [activeTab, setActiveTab] = useState<"timer" | "reflection">("timer")
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false)
+  const [hasNewChat, setHasNewChat] = useState(false)
+  const [hasNewParticipantsEvent, setHasNewParticipantsEvent] = useState(false)
   const [transferTargetUserId, setTransferTargetUserId] = useState<number | null>(null)
   const [transferTargetNickname, setTransferTargetNickname] = useState<string>("")
   const [currentReflectionSessionId, setCurrentReflectionSessionId] = useState<number | null>(null)
@@ -227,9 +229,15 @@ function HostRoomPageInner() {
 
       // 기존 메시지와 새 메시지를 시간순으로 정렬 (오래된 것부터)
       const allMessages = [...prev, ...newMessages].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+
+      // 패널이 닫혀 있을 때 새 메시지가 도착하면 채팅 아이콘에 마커 표시
+      if (newMessages.length > 0 && !isChatOpen) {
+        setHasNewChat(true)
+      }
+
       return allMessages
     })
-  }, [chatMessages, currentUser])
+  }, [chatMessages, currentUser, isChatOpen])
 
   // 이전 메시지 로드 (무한 스크롤)
   const handleLoadMore = async (lastMessageId: number) => {
@@ -486,7 +494,7 @@ function HostRoomPageInner() {
         return prev
       } else {
         // 없으면 추가 (role은 MEMBER로 설정, 나중에 API로 다시 조회하면 정확한 role을 받을 수 있음)
-        return [
+        const next = [
           ...prev,
           {
             userId: newMember.userId,
@@ -495,9 +503,16 @@ function HostRoomPageInner() {
             role: RoomMemberRole.MEMBER,
           }
         ]
+
+        // 패널이 닫혀 있을 때 새 참여자가 들어오면 참여자 아이콘에 마커 표시
+        if (!isParticipantsOpen) {
+          setHasNewParticipantsEvent(true)
+        }
+
+        return next
       }
     })
-  }, [newMember])
+  }, [newMember, isParticipantsOpen])
 
   // WebSocket으로 받은 참여자 퇴장 메시지를 처리하여 참여자 목록에서 제거
   useEffect(() => {
@@ -506,12 +521,19 @@ function HostRoomPageInner() {
     // 함수형 업데이트를 사용하여 최신 participants 상태를 참조
     setParticipants(prev => {
       // 해당 userId를 가진 참여자를 제거
-      return prev.filter(p => p.userId !== exitedMemberId)
+      const next = prev.filter(p => p.userId !== exitedMemberId)
+
+      // 퇴장 이벤트도 마커로 알려줌 (패널이 닫혀 있을 때만)
+      if (!isParticipantsOpen) {
+        setHasNewParticipantsEvent(true)
+      }
+
+      return next
     })
 
     // 처리 후 상태 초기화 (다음 퇴장 메시지를 위해)
     // 하지만 exitedMemberId는 훅에서 관리하므로 여기서는 초기화하지 않음
-  }, [exitedMemberId])
+  }, [exitedMemberId, isParticipantsOpen])
 
   // 브라우저 뒤로가기 시 나가기 다이얼로그 표시 (페이지 이동 방지)
   useEffect(() => {
@@ -606,6 +628,63 @@ function HostRoomPageInner() {
                 {roomInfo?.title || ""}
               </h1>
             </div>
+
+            {/* 상단 우측: 채팅 / 참여자 토글 */}
+            {roomInfo && (
+              <div className="flex items-center gap-3">
+                {/* 채팅 토글 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsChatOpen((prev) => !prev)
+                    // 채팅 패널을 열 때 마커 제거
+                    if (!isChatOpen) {
+                      setHasNewChat(false)
+                    }
+                    if (!isChatOpen) setIsParticipantsOpen(false)
+                  }}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                    isChatOpen
+                      ? "bg-black text-white border-black"
+                      : "bg-white/80 text-black/70 border-black/10 hover:bg-white"
+                  }`}
+                >
+                  <div className="relative flex items-center gap-1">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>채팅</span>
+                    {hasNewChat && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
+                    )}
+                  </div>
+                </button>
+
+                {/* 참여자 토글 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsParticipantsOpen((prev) => !prev)
+                    // 참여자 패널을 열 때 마커 제거
+                    if (!isParticipantsOpen) {
+                      setHasNewParticipantsEvent(false)
+                    }
+                    if (!isParticipantsOpen) setIsChatOpen(false)
+                  }}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                    isParticipantsOpen
+                      ? "bg-black text-white border-black"
+                      : "bg-white/80 text-black/70 border-black/10 hover:bg-white"
+                  }`}
+                >
+                  <div className="relative flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    <span>참여자</span>
+                    {hasNewParticipantsEvent && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
+                    )}
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -644,57 +723,24 @@ function HostRoomPageInner() {
                 </span>
               )}
 
-              {/* 우측: 채팅/인원 아이콘 + 소리 on/off 토글 */}
+              {/* 우측: 소리 on/off 토글만 유지 */}
               <div className="flex items-center gap-2 ml-auto">
-                {/* 채팅 토글 아이콘 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsChatOpen((prev) => !prev)
-                    if (!isChatOpen) setIsParticipantsOpen(false)
+                {soundEnabled ? (
+                  <Volume2 className="w-4 h-4 text-black/70" />
+                ) : (
+                  <VolumeX className="w-4 h-4 text-black/50" />
+                )}
+                <Label htmlFor="sound-toggle" className="text-xs text-black/70 cursor-pointer">
+                  시계 소리
+                </Label>
+                <Switch
+                  id="sound-toggle"
+                  checked={soundEnabled}
+                  onCheckedChange={(checked) => {
+                    setSoundEnabledState(checked)
+                    setSoundEnabled(checked)
                   }}
-                  className={`p-1.5 rounded-full border transition-colors ${
-                    isChatOpen ? "bg-black text-white border-black" : "bg-white/70 text-black/70 border-black/10"
-                  }`}
-                  aria-label="채팅 열기"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                </button>
-
-                {/* 인원 토글 아이콘 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsParticipantsOpen((prev) => !prev)
-                    if (!isParticipantsOpen) setIsChatOpen(false)
-                  }}
-                  className={`p-1.5 rounded-full border transition-colors ${
-                    isParticipantsOpen ? "bg-black text-white border-black" : "bg-white/70 text-black/70 border-black/10"
-                  }`}
-                  aria-label="참여자 목록 열기"
-                >
-                  <Users className="w-4 h-4" />
-                </button>
-
-                {/* 소리 on/off 토글 */}
-                <div className="flex items-center gap-2">
-                  {soundEnabled ? (
-                    <Volume2 className="w-4 h-4 text-black/70" />
-                  ) : (
-                    <VolumeX className="w-4 h-4 text-black/50" />
-                  )}
-                  <Label htmlFor="sound-toggle" className="text-xs text-black/70 cursor-pointer">
-                    시계 소리
-                  </Label>
-                  <Switch
-                    id="sound-toggle"
-                    checked={soundEnabled}
-                    onCheckedChange={(checked) => {
-                      setSoundEnabledState(checked)
-                      setSoundEnabled(checked)
-                    }}
-                  />
-                </div>
+                />
               </div>
             </div>
           </section>
