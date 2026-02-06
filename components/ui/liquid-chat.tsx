@@ -82,10 +82,19 @@ export function LiquidChat({
   // 입력 필드 클릭 시 전체 페이지 스크롤 방지
   const handleInputMouseDown = (e: React.MouseEvent<HTMLInputElement>) => {
     scrollPositionRef.current = window.scrollY
-    e.preventDefault()
-    setTimeout(() => {
-      inputRef.current?.focus()
-    }, 0)
+    // 모바일에서는 preventDefault를 호출하지 않음 (터치 이벤트의 기본 동작을 막지 않기 위해)
+    if (window.innerWidth >= 768) {
+      e.preventDefault()
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 0)
+    }
+  }
+
+  // 모바일 터치 이벤트 핸들러
+  const handleInputTouchStart = (e: React.TouchEvent<HTMLInputElement>) => {
+    scrollPositionRef.current = window.scrollY
+    // 터치 이벤트에서는 preventDefault를 호출하지 않음
   }
 
   // 입력 필드 포커스 시 전체 페이지 스크롤 방지
@@ -388,7 +397,13 @@ export function LiquidChat({
           borderColor: "rgba(255, 255, 255, 0.2)",
         }}
         onMouseDown={(e) => {
-          // 입력 영역 클릭 시 스크롤 위치 저장
+          // 입력 영역 클릭 시 스크롤 위치 저장 (데스크탑)
+          if (window.innerWidth >= 768) {
+            scrollPositionRef.current = window.scrollY
+          }
+        }}
+        onTouchStart={(e) => {
+          // 입력 영역 터치 시 스크롤 위치 저장 (모바일)
           scrollPositionRef.current = window.scrollY
         }}
       >
@@ -406,6 +421,7 @@ export function LiquidChat({
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             onMouseDown={handleInputMouseDown}
+            onTouchStart={handleInputTouchStart}
             onFocus={handleInputFocus}
             placeholder="채팅을 입력하세요..."
             className="flex-1 bg-transparent outline-none text-sm font-sans placeholder:text-gray-400"
