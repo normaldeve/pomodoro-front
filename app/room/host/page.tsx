@@ -27,7 +27,7 @@ import { useStudyRoomWebSocket } from "@/hooks/use-study-room-websocket"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound-notification"
-import { Volume2, VolumeX, MessageSquare, Clock, BookOpen, Users } from "lucide-react"
+import { Volume2, VolumeX, MessageSquare, Clock, BookOpen, Users, MoreVertical, X } from "lucide-react"
 
 // 초를 00:00 형식으로 변환하는 함수
 const formatTime = (seconds: number): string => {
@@ -50,6 +50,7 @@ function HostRoomPageInner() {
   const [activeTab, setActiveTab] = useState<"timer" | "reflection">("timer")
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false)
+  const [isFloatingMenuOpen, setIsFloatingMenuOpen] = useState(false)
   const [hasNewChat, setHasNewChat] = useState(false)
   const [hasNewParticipantsEvent, setHasNewParticipantsEvent] = useState(false)
   const [transferTargetUserId, setTransferTargetUserId] = useState<number | null>(null)
@@ -78,7 +79,7 @@ function HostRoomPageInner() {
   const [soundEnabled, setSoundEnabledState] = useState(true)
 
   // WebSocket 연결
-  const { sendDialDrag, sendTimerStart, sendTimerPause, sendTimerResume, sendNextFocusMinutes, statusMessage, timerState, sendChatMessage, chatMessages, newMember, exitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData, hostTransferredEvent } = useStudyRoomWebSocket(roomInfo?.roomId || null)
+  const { sendDialDrag, sendTimerStart, sendTimerPause, sendTimerResume, sendNextFocusMinutes, statusMessage, timerState, sendChatMessage, chatMessages, newMember, exitedMemberId, clearExitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData, hostTransferredEvent } = useStudyRoomWebSocket(roomInfo?.roomId || null)
   const [currentUser, setCurrentUser] = useState<{ id: number; nickname: string } | null>(null)
   const [liquidChatMessages, setLiquidChatMessages] = useState<Array<{
     id: number
@@ -195,6 +196,7 @@ function HostRoomPageInner() {
           sender: "user" as const,
           timestamp: parseMessageTimestamp(msg),
           userName: msg.senderNickname || msg.senderName || "사용자",
+          userProfileUrl: msg.senderProfileUrl || null,
         }))
 
         // 오래된 메시지부터 저장 (시간순 정렬)
@@ -225,6 +227,7 @@ function HostRoomPageInner() {
           sender: "user" as const,
           timestamp: parseMessageTimestamp(msg),
           userName: msg.senderNickname || msg.senderName || "사용자",
+          userProfileUrl: msg.senderProfileUrl || null,
         }))
 
       // 기존 메시지와 새 메시지를 시간순으로 정렬 (오래된 것부터)
@@ -253,6 +256,7 @@ function HostRoomPageInner() {
         sender: "user" as const,
         timestamp: parseMessageTimestamp(msg),
         userName: msg.senderNickname || msg.senderName || "사용자",
+        userProfileUrl: msg.senderProfileUrl || null,
       }))
 
       setLiquidChatMessages((prev) => {
@@ -532,8 +536,8 @@ function HostRoomPageInner() {
     })
 
     // 처리 후 상태 초기화 (다음 퇴장 메시지를 위해)
-    // 하지만 exitedMemberId는 훅에서 관리하므로 여기서는 초기화하지 않음
-  }, [exitedMemberId, isParticipantsOpen])
+    clearExitedMemberId()
+  }, [exitedMemberId, isParticipantsOpen, clearExitedMemberId])
 
   // 브라우저 뒤로가기 시 나가기 다이얼로그 표시 (페이지 이동 방지)
   useEffect(() => {
@@ -620,145 +624,90 @@ function HostRoomPageInner() {
       }}
     >
       <div className="relative z-10 flex w-full max-w-2xl flex-col">
-        {/* 방 정보 영역 - 제목 */}
-        <section className="mb-4 rounded-3xl bg-gradient-to-r from-white/85 via-white/75 to-white/60 backdrop-blur-2xl border border-white/70 shadow-[0_16px_40px_rgba(0,0,0,0.12)] px-6 py-4 md:px-8 md:py-5 flex flex-col gap-2 relative">
+        {/* 방 정보 영역 - 제목과 방 정보 통합 */}
+        <section className="mb-4 rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-2xl border-2 border-[#2c5f2d] shadow-[0_16px_40px_rgba(0,0,0,0.12)] px-6 py-4 md:px-8 md:py-5 flex flex-col gap-4 relative">
+          {/* 방 제목 영역 */}
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1 flex-1">
               <h1 className="text-base md:text-lg font-semibold text-black">
                 {roomInfo?.title || ""}
               </h1>
             </div>
-
-            {/* 상단 우측: 채팅 / 참여자 토글 */}
-            {roomInfo && (
-              <div className="flex items-center gap-3">
-                {/* 채팅 토글 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsChatOpen((prev) => !prev)
-                    // 채팅 패널을 열 때 마커 제거
-                    if (!isChatOpen) {
-                      setHasNewChat(false)
-                    }
-                    if (!isChatOpen) setIsParticipantsOpen(false)
-                  }}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-xs font-medium transition-colors ${
-                    isChatOpen
-                      ? "bg-black text-white border-black"
-                      : "bg-white/80 text-black/70 border-black/10 hover:bg-white"
-                  }`}
-                >
-                  <div className="relative flex items-center gap-1">
-                    <MessageSquare className="w-4 h-4" />
-                    <span>채팅</span>
-                    {hasNewChat && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
-                    )}
-                  </div>
-                </button>
-
-                {/* 참여자 토글 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsParticipantsOpen((prev) => !prev)
-                    // 참여자 패널을 열 때 마커 제거
-                    if (!isParticipantsOpen) {
-                      setHasNewParticipantsEvent(false)
-                    }
-                    if (!isParticipantsOpen) setIsChatOpen(false)
-                  }}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-xs font-medium transition-colors ${
-                    isParticipantsOpen
-                      ? "bg-black text-white border-black"
-                      : "bg-white/80 text-black/70 border-black/10 hover:bg-white"
-                  }`}
-                >
-                  <div className="relative flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    <span>참여자</span>
-                    {hasNewParticipantsEvent && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
-                    )}
-                  </div>
-                </button>
-              </div>
-            )}
           </div>
-        </section>
 
-        {/* 방 상태 및 세션 정보 영역 */}
-        {roomInfo && (
-          <section className="mb-4 rounded-2xl bg-gradient-to-r from-white/70 via-white/60 to-white/50 backdrop-blur-xl border border-white/60 shadow-[0_8px_24px_rgba(0,0,0,0.08)] px-4 py-2.5 md:px-6 md:py-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* 방 정보 헤더 */}
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
+          {/* 방 상태 및 세션 정보 영역 */}
+          {roomInfo && (
+            <>
+              {/* 구분선 */}
+              <div className="h-px bg-black/10" />
+              
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* 방 상태 */}
+                <span
+                  className="px-2.5 py-1 rounded-md text-[10px] md:text-xs font-medium text-white"
                   style={{
-                    background: "#2c5f2d",
-                    boxShadow: "0 0 10px rgba(44, 95, 45, 0.35)",
+                    backgroundColor: getStatusColor(roomInfo.status),
                   }}
-                />
-                <h2 className="text-xs font-semibold font-sans" style={{ color: "#2c5f2d" }}>
-                  방 정보
-                </h2>
-              </div>
-              
-              {/* 방 상태 */}
-              <span
-                className="px-2.5 py-1 rounded-md text-[10px] md:text-xs font-medium text-white"
-                style={{
-                  backgroundColor: getStatusColor(roomInfo.status),
-                }}
-              >
-                {getStatusText(roomInfo.status)}
-              </span>
-              
-              {/* 집중/휴식 시간 */}
-              {roomInfo.status !== "WAITING" && (
-                <span className="px-2.5 py-1 rounded-md text-[10px] md:text-xs font-medium bg-black/5 text-black/70">
-                  {roomInfo.focusMinutes}분 집중 → {roomInfo.breakMinutes}분 휴식
+                >
+                  {getStatusText(roomInfo.status)}
                 </span>
-              )}
-
-              {/* 우측: 소리 on/off 토글만 유지 */}
-              <div className="flex items-center gap-2 ml-auto">
-                {soundEnabled ? (
-                  <Volume2 className="w-4 h-4 text-black/70" />
-                ) : (
-                  <VolumeX className="w-4 h-4 text-black/50" />
+                
+                {/* 집중/휴식 시간 */}
+                {roomInfo.status !== "WAITING" && (
+                  <span className="px-2.5 py-1 rounded-md text-[10px] md:text-xs font-medium bg-black/5 text-black/70">
+                    {roomInfo.focusMinutes}분 집중 → {roomInfo.breakMinutes}분 휴식
+                  </span>
                 )}
-                <Label htmlFor="sound-toggle" className="text-xs text-black/70 cursor-pointer">
-                  시계 소리
-                </Label>
-                <Switch
-                  id="sound-toggle"
-                  checked={soundEnabled}
-                  onCheckedChange={(checked) => {
-                    setSoundEnabledState(checked)
-                    setSoundEnabled(checked)
-                  }}
-                />
+
+                {/* 우측: 소리 on/off 토글만 유지 */}
+                <div className="flex items-center gap-2 ml-auto px-3 py-1.5 rounded-lg bg-white/60 border border-black/10">
+                  {soundEnabled ? (
+                    <Volume2 className="w-4 h-4 text-black/70" />
+                  ) : (
+                    <VolumeX className="w-4 h-4 text-black/50" />
+                  )}
+                  <Label htmlFor="sound-toggle" className="text-xs text-black/70 cursor-pointer">
+                    시계 소리
+                  </Label>
+                  <Switch
+                    id="sound-toggle"
+                    checked={soundEnabled}
+                    onCheckedChange={(checked) => {
+                      setSoundEnabledState(checked)
+                      setSoundEnabled(checked)
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          </section>
-        )}
+            </>
+          )}
+        </section>
         
         {/* 플로팅 패널: 채팅 / 참여자 목록 (하단 탭 너비 기준 오른쪽 하단) */}
         {roomInfo && (
-          <div className="pointer-events-none fixed inset-x-0 bottom-20 md:bottom-24 z-40 flex justify-center">
-            <div className="w-full max-w-2xl px-4 flex flex-col items-end gap-3">
-            {/* 채팅 패널 */}
-            <div
-              className={`transition-all duration-300 overflow-hidden w-full flex justify-end ${
-                isChatOpen ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
-              }`}
-            >
+          <>
+            {/* 배경 오버레이 - 외부 클릭 시 패널 닫기 */}
+            {(isChatOpen || isParticipantsOpen) && (
               <div
-                className="pointer-events-auto rounded-3xl bg-gradient-to-br from-[#e4f3e6]/95 via-[#d3e7d6]/90 to-[#c2dbc7]/90 backdrop-blur-3xl border border-white/50 overflow-hidden min-h-[420px] max-h-[calc(100vh-140px)] flex flex-col w-full max-w-xs md:max-w-sm"
+                className="fixed inset-0 z-30 bg-black/0"
+                onClick={() => {
+                  setIsChatOpen(false)
+                  setIsParticipantsOpen(false)
+                }}
+              />
+            )}
+            <div className="pointer-events-none fixed inset-x-0 bottom-20 md:bottom-24 z-40 flex justify-center">
+              <div className="w-full max-w-2xl px-4 flex flex-col items-end gap-3">
+              {/* 채팅 패널 */}
+              <div
+                className={`transition-all duration-300 overflow-hidden w-full flex justify-end ${
+                  isChatOpen ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
+                }`}
               >
+                <div
+                  className="pointer-events-auto rounded-3xl bg-[#fff8ea] backdrop-blur-3xl border-2 border-[#2c5f2d] overflow-hidden min-h-[420px] max-h-[calc(100vh-140px)] flex flex-col w-full max-w-xs md:max-w-sm"
+                  onClick={(e) => e.stopPropagation()}
+                >
                 <div className="flex-1 min-h-0 overflow-hidden">
                   <LiquidChat
                     messages={liquidChatMessages}
@@ -783,7 +732,10 @@ function HostRoomPageInner() {
                 isParticipantsOpen ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
               }`}
             >
-              <div className="pointer-events-auto rounded-3xl bg-gradient-to-br from-[#e4f3e6]/95 via-[#d3e7d6]/90 to-[#c2dbc7]/90 backdrop-blur-3xl border border-white/50 overflow-hidden h-[340px] w-full max-w-xs md:max-w-sm">
+              <div 
+                className="pointer-events-auto rounded-3xl bg-[#fff8ea] backdrop-blur-3xl border-2 border-[#2c5f2d] overflow-hidden h-[340px] w-full max-w-xs md:max-w-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <ParticipantsList 
                   participants={participants} 
                   isLoading={isLoadingParticipants}
@@ -799,8 +751,9 @@ function HostRoomPageInner() {
                 />
               </div>
             </div>
+            </div>
           </div>
-        </div>
+          </>
         )}
 
         {/* 메인 콘텐츠 */}
@@ -809,7 +762,7 @@ function HostRoomPageInner() {
           {activeTab === "timer" && (
             <>
               {/* 타이머 카드 */}
-              <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-6 md:px-8 md:py-6 flex flex-col items-center justify-center gap-4 overflow-hidden w-full min-h-[500px] md:min-h-[540px]">
+              <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border-2 border-[#2c5f2d] shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-6 md:px-8 md:py-6 flex flex-col items-center justify-center gap-4 overflow-hidden w-full min-h-[500px] md:min-h-[540px]">
                 {/* 타이머 영역 - 포모도로/플립 공통 높이 */}
                 <div className="w-full h-[480px] flex items-center justify-center">
                   {roomInfo?.timerType === TimerType.FLIP ? (
@@ -916,45 +869,116 @@ function HostRoomPageInner() {
 
       {/* 하단 탭 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
-        <div className="w-full max-w-2xl rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]">
-          <div className="flex items-center justify-around px-2 py-2">
-            {/* 타이머 탭 */}
-            <button
-              type="button"
-              onClick={() => setActiveTab("timer")}
-              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                activeTab === "timer"
-                  ? "text-primary bg-primary/10"
-                  : "text-black/60 hover:text-black/80"
-              }`}
-            >
-              <Clock className="h-5 w-5" />
-              <span className="text-[10px] font-medium">타이머</span>
-            </button>
+        <div className="relative w-full max-w-2xl">
+          <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]">
+            <div className="flex items-center justify-around px-2 py-2">
+              {/* 타이머 탭 */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("timer")}
+                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  activeTab === "timer"
+                    ? "text-primary bg-primary/10"
+                    : "text-black/60 hover:text-black/80"
+                }`}
+              >
+                <Clock className="h-5 w-5" />
+                <span className="text-[10px] font-medium">타이머</span>
+              </button>
 
-            {/* 나가기 - 중앙 플로팅 버튼 */}
-            <button
-              type="button"
-              onClick={() => setIsExitDialogOpen(true)}
-              className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-white shadow-lg shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors -mt-6 cursor-pointer"
-              aria-label="방 나가기"
-            >
-              <DoorClosed className="h-6 w-6" />
-            </button>
+              {/* 나가기 - 중앙 플로팅 버튼 */}
+              <button
+                type="button"
+                onClick={() => setIsExitDialogOpen(true)}
+                className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-white shadow-lg shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors -mt-6 cursor-pointer"
+                aria-label="방 나가기"
+              >
+                <DoorClosed className="h-6 w-6" />
+              </button>
 
-            {/* 회고 탭 */}
+              {/* 회고 탭 */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("reflection")}
+                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  activeTab === "reflection"
+                    ? "text-primary bg-primary/10"
+                    : "text-black/60 hover:text-black/80"
+                }`}
+              >
+                <BookOpen className="h-5 w-5" />
+                <span className="text-[10px] font-medium">회고</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* 플로팅 메뉴 버튼 - 오른쪽 하단 (하단 탭 바 위) */}
+          <div className="absolute -top-16 right-4">
+            {/* 플로팅 메뉴 토글 버튼 - 항상 고정 위치 */}
             <button
               type="button"
-              onClick={() => setActiveTab("reflection")}
-              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                activeTab === "reflection"
-                  ? "text-primary bg-primary/10"
-                  : "text-black/60 hover:text-black/80"
+              onClick={() => setIsFloatingMenuOpen((prev) => !prev)}
+              className={`relative flex items-center justify-center w-12 h-12 rounded-full bg-[#2c5f2d] text-white shadow-lg shadow-[#2c5f2d]/40 border-2 border-white/70 hover:bg-[#2c5f2d]/90 transition-all z-10 ${
+                isFloatingMenuOpen ? 'rotate-90' : ''
               }`}
+              aria-label="메뉴"
             >
-              <BookOpen className="h-5 w-5" />
-              <span className="text-[10px] font-medium">회고</span>
+              {isFloatingMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <MoreVertical className="h-5 w-5" />
+              )}
+              {/* 채팅이나 참여자 목록에 새 데이터가 있을 때 알림 표시 */}
+              {(hasNewChat || hasNewParticipantsEvent) && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 shadow-sm border-2 border-white" />
+              )}
             </button>
+            
+            {/* 채팅/참여자 버튼들 - 플로팅 메뉴가 열려있을 때만 표시 (플로팅 버튼 위에 배치) */}
+            {isFloatingMenuOpen && (
+              <div className="absolute bottom-0 right-0 flex flex-col items-end gap-2 mb-14">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsChatOpen((prev) => !prev)
+                    setIsParticipantsOpen(false)
+                    if (!isChatOpen) {
+                      setHasNewChat(false)
+                    }
+                    setIsFloatingMenuOpen(false)
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border-2 border-[#2c5f2d] shadow-lg hover:bg-white transition-all whitespace-nowrap"
+                >
+                  <div className="relative flex items-center gap-1.5">
+                    <MessageSquare className="w-4 h-4 text-[#2c5f2d] flex-shrink-0" />
+                    <span className="text-xs font-medium text-[#2c5f2d] whitespace-nowrap">채팅</span>
+                    {hasNewChat && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
+                    )}
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsParticipantsOpen((prev) => !prev)
+                    setIsChatOpen(false)
+                    if (!isParticipantsOpen) {
+                      setHasNewParticipantsEvent(false)
+                    }
+                    setIsFloatingMenuOpen(false)
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border-2 border-[#2c5f2d] shadow-lg hover:bg-white transition-all whitespace-nowrap"
+                >
+                  <div className="relative flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-[#2c5f2d] flex-shrink-0" />
+                    <span className="text-xs font-medium text-[#2c5f2d] whitespace-nowrap">참여자</span>
+                    {hasNewParticipantsEvent && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
+                    )}
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

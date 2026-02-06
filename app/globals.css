@@ -75,7 +75,7 @@
 
 :root {
   /* Updated color tokens to match liquid glass design brief with pastel gradients and amber accents */
-  --background: oklch(0.98 0.02 85); /* #fefce8 - soft cream background */
+  --background: #fff8ea; /* 베이지 배경 */
   --foreground: oklch(0.35 0.02 220); /* #374151 - dark gray text */
   --card: oklch(1 0 0 / 0.7); /* Semi-transparent white for glass effect */
   --card-foreground: oklch(0.35 0.02 220); /* #374151 - dark gray text on cards */

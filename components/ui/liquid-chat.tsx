@@ -10,6 +10,7 @@ export interface LiquidChatMessage {
   sender: "user" | "system"
   timestamp: Date
   userName?: string
+  userProfileUrl?: string | null
 }
 
 export interface LiquidChatProps {
@@ -316,34 +317,65 @@ export function LiquidChat({
           {messages.map((message, index) => (
             <div
               key={message.id || `message-${index}-${message.timestamp?.getTime() || Date.now()}`}
-              className="flex flex-col items-start"
+              className="flex items-start gap-2 w-full"
             >
-              {message.userName && (
-                <span
-                  className="text-xs mb-1 px-1 font-sans font-medium"
-                  style={{ color: colors.textLight }}
-                >
-                  {message.userName}
-                </span>
-              )}
+              {/* 프로필 이미지 */}
+              {message.userProfileUrl ? (
+                <img
+                  src={message.userProfileUrl}
+                  alt={message.userName || "사용자"}
+                  className="w-8 h-8 rounded-full border-2 border-white/80 shadow-sm object-cover flex-shrink-0"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement
+                    const fallback = target.nextElementSibling as HTMLElement
+                    if (fallback) {
+                      target.style.display = 'none'
+                      fallback.style.display = 'flex'
+                    }
+                  }}
+                />
+              ) : null}
               <div
-                className="max-w-[85%] px-4 py-2.5 rounded-2xl"
+                className={`w-8 h-8 rounded-full border-2 border-white/80 shadow-sm flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 ${message.userProfileUrl ? 'hidden' : ''}`}
                 style={{
-                  background: "rgba(255, 255, 255, 0.4)",
-                  // 채팅 메시지 본문 텍스트는 검정색으로 표시
-                  color: "#111827",
-                  backdropFilter: "blur(10px)",
-                  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.05)",
+                  background: "#c5d4c0",
                 }}
               >
-                <p className="text-sm font-sans leading-relaxed">{message.text}</p>
+                {(message.userName || "사용자").charAt(0)}
               </div>
-              <span
-                className="text-xs mt-1 px-1 font-sans"
-                style={{ color: colors.textLight }}
-              >
-                {formatTime(message.timestamp)}
-              </span>
+              
+              {/* 메시지 내용 */}
+              <div className="flex-1 min-w-0 flex flex-col items-start">
+                {message.userName && (
+                  <span
+                    className="text-xs mb-1 px-1 font-sans font-bold"
+                    style={{ color: "#111827" }}
+                  >
+                    {message.userName}
+                  </span>
+                )}
+                <div className="flex items-end gap-2 w-full">
+                  <div
+                    className="max-w-[85%] px-4 py-2.5 rounded-2xl"
+                    style={{
+                      background: "rgba(255, 255, 255, 0.4)",
+                      // 채팅 메시지 본문 텍스트는 검정색으로 표시
+                      color: "#111827",
+                      backdropFilter: "blur(10px)",
+                      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.05)",
+                    }}
+                  >
+                    <p className="text-sm font-sans leading-relaxed">{message.text}</p>
+                  </div>
+                  {/* 작성일 - 메시지 오른쪽에 배치 */}
+                  <span
+                    className="text-[10px] font-sans flex-shrink-0"
+                    style={{ color: "#111827" }}
+                  >
+                    {formatTime(message.timestamp)}
+                  </span>
+                </div>
+              </div>
             </div>
           ))}
         </div>

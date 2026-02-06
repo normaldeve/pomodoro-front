@@ -273,7 +273,7 @@ function HomePageInner() {
     <div
       className="min-h-screen flex items-stretch justify-center px-6 pt-3 pb-20 md:px-10 md:pt-4 md:pb-24"
       style={{
-        // 가장 뒷 배경을 #fff8ea 베이지 톤으로 설정
+        // 가장 뒷 배경을 베이지 색으로 설정
         backgroundColor: "#fff8ea",
         transition: "opacity 0.5s ease-in",
         opacity: isLoaded ? 1 : 0,
@@ -386,7 +386,7 @@ function HomePageInner() {
 
             {/* Room list */}
             <section
-              className="rounded-3xl bg-white/40 backdrop-blur-3xl border border-white/50 shadow-[0_18px_60px_rgba(0,0,0,0.15)] px-4 py-5 md:px-6 md:py-6 flex flex-col gap-4 transition-all duration-700 ease-out"
+              className="rounded-3xl bg-white/40 backdrop-blur-3xl border-2 border-[#2c5f2d] shadow-[0_18px_60px_rgba(0,0,0,0.15)] px-4 py-5 md:px-6 md:py-6 flex flex-col gap-4 transition-all duration-700 ease-out"
               style={{
                 opacity: showRooms ? 1 : 0,
                 transform: showRooms ? "translateY(0)" : "translateY(20px)",

@@ -42,6 +42,10 @@ export interface ReflectionProps {
    * 회고 처리 완료 후 호출되는 콜백 (중복 방지를 위해 reflectionData 초기화용)
    */
   onReflectionProcessed?: () => void
+  /**
+   * 테두리 표시 여부 (기본값: true)
+   */
+  showBorder?: boolean
 }
 
 const colors = {
@@ -57,19 +61,71 @@ export function Reflection({
   onReflectionsChange,
   liveReflection,
   onReflectionProcessed,
+  showBorder = true,
 }: ReflectionProps) {
   const [reflections, setReflections] = useState<Reflection[]>(initialReflections)
   const processedReflectionIdsRef = useRef<Set<number>>(new Set())
+  const lastInitialReflectionsRef = useRef<Reflection[]>([])
 
   // initialReflections가 변경되면 state 업데이트 및 처리된 ID 기록
   useEffect(() => {
-    if (initialReflections.length > 0) {
-      setReflections(initialReflections)
-      // 이미 로드된 회고 ID들을 processedReflectionIdsRef에 추가 (중복 방지)
+    // initialReflections가 비어있으면 무시 (단, 처음 로드 시에는 제외)
+    if (initialReflections.length === 0 && lastInitialReflectionsRef.current.length > 0) {
+      return
+    }
+
+    // 이전 initialReflections와 비교하여 실제로 변경되었는지 확인
+    const hasChanged = 
+      lastInitialReflectionsRef.current.length !== initialReflections.length ||
+      lastInitialReflectionsRef.current.some((prev, idx) => {
+        const current = initialReflections[idx]
+        return !current || prev.id !== current.id
+      })
+
+    // 처음 로드 시 (lastInitialReflectionsRef가 비어있음) 또는 실제로 변경된 경우에만 업데이트
+    const isFirstLoad = lastInitialReflectionsRef.current.length === 0
+
+    if (!hasChanged && !isFirstLoad) {
+      // 변경사항이 없으면 무시 (웹소켓으로 추가된 회고 보존)
+      return
+    }
+
+    // initialReflections가 변경되었을 때만 업데이트
+    setReflections((prev) => {
+      // 처음 로드 시에는 initialReflections로 완전히 교체
+      if (isFirstLoad && initialReflections.length > 0) {
+        initialReflections.forEach((reflection) => {
+          processedReflectionIdsRef.current.add(reflection.id)
+        })
+        return initialReflections
+      }
+
+      // 이후 업데이트 시에는 기존 회고와 새로 받은 회고를 병합 (중복 제거)
+      const mergedMap = new Map<number, Reflection>()
+      
+      // 기존 회고 먼저 추가 (웹소켓으로 받은 회고 포함)
+      prev.forEach((reflection) => {
+        mergedMap.set(reflection.id, reflection)
+      })
+      
+      // initialReflections 추가 (중복은 덮어쓰지 않음 - 기존 것이 우선)
       initialReflections.forEach((reflection) => {
+        if (!mergedMap.has(reflection.id)) {
+          mergedMap.set(reflection.id, reflection)
+        }
+        // 처리된 ID 기록
         processedReflectionIdsRef.current.add(reflection.id)
       })
-    }
+      
+      // 배열로 변환 후 최신 순으로 정렬
+      const merged = Array.from(mergedMap.values())
+      merged.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      
+      return merged
+    })
+
+    // 마지막 initialReflections 저장
+    lastInitialReflectionsRef.current = [...initialReflections]
   }, [initialReflections])
 
   // 처리 완료 콜백을 안전하게 호출하는 헬퍼 함수
@@ -133,7 +189,7 @@ export function Reflection({
 
   return (
     <div
-      className="flex flex-col rounded-3xl w-full h-full bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)]"
+      className={`flex flex-col rounded-3xl w-full h-full bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl shadow-[0_24px_80px_rgba(0,0,0,0.16)] ${showBorder ? 'border-2 border-[#2c5f2d]' : ''}`}
     >
       {/* Header */}
       <div

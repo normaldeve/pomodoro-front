@@ -126,7 +126,7 @@ export function GoalsList({ roomId, roomStatus }: GoalsListProps) {
 
   return (
     <div
-      className="flex flex-col rounded-3xl w-full h-full bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_24px_80px_rgba(0,0,0,0.16)]"
+      className="flex flex-col rounded-3xl w-full h-full bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border-2 border-[#2c5f2d] shadow-[0_24px_80px_rgba(0,0,0,0.16)]"
     >
       {/* Header */}
       <div

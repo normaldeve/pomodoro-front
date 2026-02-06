@@ -144,13 +144,14 @@ export function useStudyRoomWebSocket(roomId: number | null) {
   // 참여자 퇴장 메시지 처리
   const handleMemberExit = useCallback((userId: number) => {
     setExitedMemberId(userId)
-    // 다음 메시지를 위해 짧은 시간 후 초기화 (컴포넌트에서 처리 완료 후)
-    setTimeout(() => {
-      setExitedMemberId(null)
-    }, 100)
   }, [])
   
   handleMemberExitRef.current = handleMemberExit
+
+  // exitedMemberId 초기화 함수 (컴포넌트에서 처리 완료 후 호출)
+  const clearExitedMemberId = useCallback(() => {
+    setExitedMemberId(null)
+  }, [])
 
   // 회고 다이얼로그 열기 알림 처리
   const handleReflectionEvent = useCallback((event: ReflectionNotificationEvent) => {
@@ -395,6 +396,7 @@ export function useStudyRoomWebSocket(roomId: number | null) {
     chatMessages,
     newMember,
     exitedMemberId,
+    clearExitedMemberId,
     sendEnterRoom,
     sendMemberExit,
     sendReflection,

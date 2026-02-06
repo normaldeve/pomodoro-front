@@ -98,6 +98,7 @@ export interface MessageResponse {
   senderId: number
   senderName?: string
   senderNickname?: string
+  senderProfileUrl?: string | null
   timestamp: string
   roomId?: number
 }

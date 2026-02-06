@@ -376,7 +376,7 @@ function SessionSummaryPageInner() {
                 </div>
               </div>
             ) : (
-              <Reflection initialReflections={reflections} />
+              <Reflection initialReflections={reflections} showBorder={false} />
             )}
           </div>
         </section>
