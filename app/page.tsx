@@ -35,6 +35,7 @@ import { Switch } from "@/components/ui/switch"
 import { logoutApi, createStudyRoom, ApiError, getStudyRooms, StudyRoomListResponse, StudyRoomStatus, TimerType, getCurrentUser, getParticipateRoomInfo } from "@/lib/api"
 import { showSuccessNotification } from "@/lib/system-notification"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 // 큰 컴포넌트들을 동적 import로 지연 로딩하여 초기 번들 크기 감소
 const LoginModal = dynamic(() => import("@/components/login-modal").then((mod) => mod.LoginModal), {
@@ -104,6 +105,7 @@ function HomePageInner() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const isMobile = useIsMobile()
   const [isLoggedIn, setIsLoggedIn] = useState(false) // 로그인 상태 관리
   const [user, setUser] = useState<{ id: number; username: string; nickname: string; profileUrl: string | null; role: string } | null>(null) // 사용자 정보
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false) // 로그인 모달 상태
@@ -122,6 +124,20 @@ function HomePageInner() {
   const [isEnterDialogOpen, setIsEnterDialogOpen] = useState(false) // 입장 다이얼로그 상태
   const [isLoginRequiredDialogOpen, setIsLoginRequiredDialogOpen] = useState(false) // 로그인 필요 다이얼로그 상태
   const [isUserStudyDialogOpen, setIsUserStudyDialogOpen] = useState(false) // 공부 기록 다이얼로그 상태
+
+  const desktopBanners = [
+    { src: "/banners/banner_main.png", alt: "배너 1" },
+    { src: "/banners/banner_new_year.png", alt: "배너 2" },
+    { src: "/banners/banner_focus.png", alt: "배너 3" },
+  ]
+
+  const mobileBanners = [
+    { src: "/banners/banner_main.png", alt: "배너 1" },
+    { src: "/banners/banner_focus.png", alt: "배너 2" },
+  ]
+
+  const banners = isMobile ? mobileBanners : desktopBanners
+  const totalBanners = banners.length
   
   // 방 생성 폼 상태
   const [roomName, setRoomName] = useState("")
@@ -262,12 +278,21 @@ function HomePageInner() {
 
   // 배너 자동 전환 (5초마다)
   useEffect(() => {
+    if (totalBanners <= 1) return
+
     const interval = setInterval(() => {
-      setCurrentBannerIndex((prev) => (prev === 0 ? 1 : 0))
+      setCurrentBannerIndex((prev) => (prev + 1) % totalBanners)
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [totalBanners])
+
+  // 배너 개수가 변경되었을 때 인덱스 보정
+  useEffect(() => {
+    if (currentBannerIndex >= totalBanners) {
+      setCurrentBannerIndex(0)
+    }
+  }, [currentBannerIndex, totalBanners])
 
   return (
     <div
@@ -342,45 +367,32 @@ function HomePageInner() {
                   transform: `translateX(-${currentBannerIndex * 100}%)`,
                 }}
               >
-                {/* 첫 번째 배너 */}
-                <div className="w-full h-full flex-shrink-0">
-                  <Image
-                    src="/banners/banner_main.png"
-                    alt="배너 1"
-                    width={1200}
-                    height={300}
-                    className="w-full h-full object-contain md:object-cover"
-                    priority
-                  />
-                </div>
-                {/* 두 번째 배너 */}
-                <div className="w-full h-full flex-shrink-0">
-                  <Image
-                    src="/banners/banner_new_year.png"
-                    alt="배너 2"
-                    width={1200}
-                    height={300}
-                    className="w-full h-full object-contain md:object-cover"
-                  />
-                </div>
+                {banners.map((banner, index) => (
+                  <div key={index} className="w-full h-full flex-shrink-0">
+                    <Image
+                      src={banner.src}
+                      alt={banner.alt}
+                      width={1200}
+                      height={300}
+                      className="w-full h-full object-contain md:object-cover"
+                      priority={index === 0}
+                    />
+                  </div>
+                ))}
               </div>
 
               {/* 배너 인디케이터 */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                <button
-                  onClick={() => setCurrentBannerIndex(0)}
-                  className={`h-2 rounded-full transition-all ${
-                    currentBannerIndex === 0 ? "bg-black w-6" : "bg-black/30 w-2"
-                  }`}
-                  aria-label="첫 번째 배너"
-                />
-                <button
-                  onClick={() => setCurrentBannerIndex(1)}
-                  className={`h-2 rounded-full transition-all ${
-                    currentBannerIndex === 1 ? "bg-black w-6" : "bg-black/30 w-2"
-                  }`}
-                  aria-label="두 번째 배너"
-                />
+                {banners.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentBannerIndex(index)}
+                    className={`h-2 rounded-full transition-all ${
+                      currentBannerIndex === index ? "bg-black w-6" : "bg-black/30 w-2"
+                    }`}
+                    aria-label={`${index + 1}번째 배너`}
+                  />
+                ))}
               </div>
             </div>
 
