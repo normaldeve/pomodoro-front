@@ -19,7 +19,7 @@ const PomodoroDialStatic = dynamic(() => import("@/components/ui/pomodoro-dial-s
 const FlipTimerStatic = dynamic(() => import("@/components/ui/flip-timer-static").then((mod) => mod.FlipTimerStatic), {
   ssr: false,
 })
-import { DoorOpen, Plus, Search, User, Lock, X, Trophy, HelpCircle, Clock, ChevronLeft, ChevronRight, RefreshCw, Home } from "lucide-react"
+import { DoorOpen, Plus, Search, User, Lock, X, Trophy, HelpCircle, Clock, ChevronLeft, ChevronRight, Home } from "lucide-react"
 const CustomScrollbar = dynamic(() => import("@/components/ui/custom-scrollbar").then((mod) => mod.CustomScrollbar), { ssr: false })
 import {
   Dialog,
@@ -386,7 +386,7 @@ function HomePageInner() {
 
             {/* Room list */}
             <section
-              className="rounded-3xl bg-white/40 backdrop-blur-3xl border-2 border-[#2c5f2d] shadow-[0_18px_60px_rgba(0,0,0,0.15)] px-4 py-5 md:px-6 md:py-6 flex flex-col gap-4 transition-all duration-700 ease-out"
+              className="flex flex-col gap-4 transition-all duration-700 ease-out"
               style={{
                 opacity: showRooms ? 1 : 0,
                 transform: showRooms ? "translateY(0)" : "translateY(20px)",
@@ -432,32 +432,21 @@ function HomePageInner() {
                       <span className="text-xs md:text-sm text-black/60 whitespace-nowrap">
                         총 {totalRooms}개 방
                       </span>
-                      <button
-                        type="button"
-                        onClick={fetchStudyRooms}
-                        disabled={isLoadingRooms}
-                        className="flex items-center justify-center h-8 w-8 rounded-full border border-primary/40 bg-primary text-xs text-white shadow-[0_8px_20px_rgba(44,95,45,0.45)] hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                        aria-label="스터디 목록 새로고침"
-                      >
-                        <RefreshCw
-                          className={`h-4 w-4 ${isLoadingRooms ? "animate-spin" : ""}`}
-                        />
-                      </button>
                     </div>
                     {/* 검색창 */}
                     <div className="relative w-full md:w-[240px] lg:w-[280px]">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-black/60" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                       <input
                         type="text"
                         placeholder="스터디 이름이나 태그로 검색해보세요!"
-                        className="w-full rounded-full bg-transparent border border-black/10 py-1.5 pl-8 pr-3 text-xs text-black placeholder:text-black/40 outline-none shadow-sm focus:bg-white focus:border-black/30 transition-colors"
+                        className="w-full rounded-full bg-[#f5f5f5] py-2 pl-8 pr-3 text-xs text-black placeholder:text-gray-500 outline-none border border-transparent focus:border-gray-300 transition-colors"
                       />
                     </div>
                   </div>
                 </div>
               </header>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 gap-3 md:gap-4">
                 {isLoadingRooms ? (
                   <div className="col-span-full text-center py-8 text-xs md:text-sm text-black/60">
                     로딩 중...
@@ -515,8 +504,7 @@ function HomePageInner() {
                   return (
                     <Card
                       key={room.id}
-                      className="group border bg-gradient-to-br from-white/50 via-white/40 to-white/25 backdrop-blur-2xl hover:-translate-y-0.5 cursor-pointer h-full flex flex-col"
-                      style={{ borderColor: "#d1d1d1" }}
+                      className="group rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-[#d1d1d1] shadow-[0_16px_40px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 cursor-pointer h-full flex flex-col"
                       style={{
                         opacity: showRooms ? 1 : 0,
                         transform: showRooms ? "translateY(0)" : "translateY(20px)",
@@ -524,15 +512,7 @@ function HomePageInner() {
                         transitionDuration: "0.3s",
                         transitionTimingFunction: "ease-out",
                         transitionDelay: `${700 + index * 100}ms`,
-                        minHeight: "140px",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transition = "background-color 0.15s ease-out"
-                        e.currentTarget.style.backgroundColor = "rgba(197, 212, 192, 0.3)"
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transition = "background-color 0.15s ease-out"
-                        e.currentTarget.style.backgroundColor = ""
+                        minHeight: "110px",
                       }}
                       role="button"
                       tabIndex={0}
@@ -541,7 +521,7 @@ function HomePageInner() {
                         setIsEnterDialogOpen(true)
                       }}
                     >
-                      <CardHeader className="relative px-5 pb-3" style={{ minHeight: "60px" }}>
+                      <CardHeader className="relative px-4 pb-2" style={{ minHeight: "48px" }}>
                         {/* 제목 */}
                         <div className="pr-20 flex items-center gap-2">
                           {/* 상태 인디케이터 - 제목 앞 */}
@@ -562,14 +542,14 @@ function HomePageInner() {
                           )}
                         </div>
                         {/* 참여 인원 - 오른쪽 상단 절대 위치 */}
-                        <div className="absolute top-0 right-5 flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/60 border border-white/70">
+                        <div className="absolute top-0 right-5 flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/60 border border-gray-300">
                           <User className="h-3.5 w-3.5 text-black/70" />
                           <span className="text-xs font-medium text-black/80">
                             {room.participants} / {room.totalParticipants}
                           </span>
                         </div>
                       </CardHeader>
-                      <CardContent className="px-5 pt-0 pb-1" style={{ height: "60px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                      <CardContent className="px-4 pt-0 pb-1" style={{ height: "44px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
                         <div className="flex flex-col gap-2">
                           {/* 해시태그 */}
                           {room.hashtags && room.hashtags.length > 0 && (
@@ -579,11 +559,11 @@ function HomePageInner() {
                                   key={index}
                                   className="px-2 py-1 rounded-md text-[10px] md:text-xs font-medium"
                                   style={{
-                                    background: "rgba(0, 0, 0, 0.05)",
+                                    background: "#d9f2d9",
                                     color: "rgba(0, 0, 0, 0.7)",
                                   }}
                                 >
-                                  {tag}
+                                  {tag.startsWith("#") ? tag : `#${tag}`}
                                 </span>
                               ))}
                             </div>
