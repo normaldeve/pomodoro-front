@@ -515,7 +515,8 @@ function HomePageInner() {
                   return (
                     <Card
                       key={room.id}
-                      className="group border-white/60 bg-gradient-to-br from-white/50 via-white/40 to-white/25 backdrop-blur-2xl shadow-md hover:shadow-xl hover:-translate-y-0.5 cursor-pointer h-full flex flex-col"
+                      className="group border bg-gradient-to-br from-white/50 via-white/40 to-white/25 backdrop-blur-2xl hover:-translate-y-0.5 cursor-pointer h-full flex flex-col"
+                      style={{ borderColor: "#d1d1d1" }}
                       style={{
                         opacity: showRooms ? 1 : 0,
                         transform: showRooms ? "translateY(0)" : "translateY(20px)",

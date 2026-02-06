@@ -600,7 +600,7 @@ function MemberRoomPageInner() {
     >
       <div className="relative z-10 flex w-full max-w-2xl flex-col">
         {/* 방 정보 영역 - 제목과 방 정보 통합 */}
-        <section className="mb-4 rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-2xl border-2 border-[#2c5f2d] shadow-[0_16px_40px_rgba(0,0,0,0.12)] px-6 py-4 md:px-8 md:py-5 flex flex-col gap-4 relative">
+        <section className="mb-4 md:mb-6 rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-2xl border-2 border-[#2c5f2d] shadow-[0_16px_40px_rgba(0,0,0,0.12)] px-6 py-4 md:px-8 md:py-5 flex flex-col gap-4 relative">
           {/* 방 제목 영역 */}
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1 flex-1">
@@ -642,7 +642,7 @@ function MemberRoomPageInner() {
                     <VolumeX className="w-4 h-4 text-black/50" />
                   )}
                   <Label htmlFor="sound-toggle" className="text-xs text-black/70 cursor-pointer">
-                    시계 소리
+                    시계
                   </Label>
                   <Switch
                     id="sound-toggle"
@@ -761,7 +761,7 @@ function MemberRoomPageInner() {
 
               {/* 목표 카드 - 타이머 종류와 관계없이 동일 위치/높이 */}
               {roomInfo && (
-                <div className="w-full mt-4 h-[320px] md:h-[360px]">
+                <div className="w-full h-[320px] md:h-[360px]">
                   <GoalsList roomId={roomInfo.roomId} roomStatus={roomInfo.status} />
                 </div>
               )}
