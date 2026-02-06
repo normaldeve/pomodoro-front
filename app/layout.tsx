@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import dynamic from "next/dynamic"
+import { PwaClient } from "@/components/pwa-client"
 
 // Toaster를 동적 import로 지연 로딩하여 초기 번들 크기 감소
 // Toaster는 Client Component이므로 동적 import만으로도 충분히 지연 로딩됨
@@ -20,6 +21,8 @@ export const metadata: Metadata = {
   title: "뽀개더 - 함께 포모도로!",
   description: "뽀모도로로 함께 집중하는 공부방 서비스",
   generator: "v0.app",
+  themeColor: "#2c5f2d",
+  manifest: "/manifest.json",
   icons: {
     icon: [
       { url: "/images/home_icon.png", sizes: "32x32", type: "image/png" },
@@ -39,6 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} antialiased`}>
       <body className="font-sans">
+        <PwaClient />
         {children}
         <Toaster />
         <ServerStatusOverlay />

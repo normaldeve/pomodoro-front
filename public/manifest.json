@@ -1,0 +1,23 @@
+{
+  "name": "뽀개더 - 함께 포모도로!",
+  "short_name": "뽀개더",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff8ea",
+  "theme_color": "#2c5f2d",
+  "description": "뽀모도로로 함께 집중하는 공부방 서비스",
+  "icons": [
+    {
+      "src": "/images/home_icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/home_icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
