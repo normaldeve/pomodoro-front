@@ -352,10 +352,10 @@ function HomePageInner() {
         <main className="flex w-full">
           {/* Hero + room list */}
           <section className="flex-1 flex flex-col gap-6">
-            {/* 배너 캐러셀 */}
+            {/* 배너 캐러셀 (배너 원본 비율 1080x360 = 3:1 에 맞춘 높이) */}
             <div
               className={`relative w-full overflow-hidden rounded-3xl ${
-                isMobile ? "h-[140px]" : "h-[150px]"
+                isMobile ? "h-[120px]" : "h-[190px]"
               }`}
             >
               <div
@@ -364,24 +364,18 @@ function HomePageInner() {
                   transform: `translateX(-${currentBannerIndex * 100}%)`,
                 }}
               >
-                {banners.map((banner, index) => {
-                  const imgClassName = isMobile
-                    ? "w-full h-full object-cover"
-                    : "w-full h-full object-contain md:object-cover"
-
-                  return (
-                    <div key={index} className="w-full h-full flex-shrink-0">
-                      <Image
-                        src={banner.src}
-                        alt={banner.alt}
-                        width={1200}
-                        height={300}
-                        className={imgClassName}
-                        priority={index === 0}
-                      />
-                    </div>
-                  )
-                })}
+                {banners.map((banner, index) => (
+                  <div key={index} className="w-full h-full flex-shrink-0">
+                    <Image
+                      src={banner.src}
+                      alt={banner.alt}
+                      width={1080}
+                      height={360}
+                      className={isMobile ? "w-full h-full object-cover" : "w-full h-full object-contain"}
+                      priority={index === 0}
+                    />
+                  </div>
+                ))}
               </div>
 
               {/* 배너 인디케이터 */}
