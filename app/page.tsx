@@ -124,12 +124,20 @@ function HomePageInner() {
   const [isEnterDialogOpen, setIsEnterDialogOpen] = useState(false) // 입장 다이얼로그 상태
   const [isLoginRequiredDialogOpen, setIsLoginRequiredDialogOpen] = useState(false) // 로그인 필요 다이얼로그 상태
   const [isUserStudyDialogOpen, setIsUserStudyDialogOpen] = useState(false) // 공부 기록 다이얼로그 상태
-  // 배너 목록 (모바일/데스크톱 공통 3장)
-  const banners = [
+  // 배너 목록
+  const desktopBanners = [
     { src: "/banners/banner_main.png", alt: "배너 1" },
     { src: "/banners/banner_new_year.png", alt: "배너 2" },
     { src: "/banners/banner_focus.png", alt: "배너 3" },
   ]
+
+  const mobileBanners = [
+    { src: "/banners/mobile/1.png", alt: "모바일 배너 1" },
+    { src: "/banners/mobile/2.png", alt: "모바일 배너 2" },
+    { src: "/banners/mobile/3.png", alt: "모바일 배너 3" },
+  ]
+
+  const banners = isMobile ? mobileBanners : desktopBanners
   const totalBanners = banners.length
   
   // 방 생성 폼 상태
