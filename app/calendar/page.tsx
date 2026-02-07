@@ -398,10 +398,6 @@ export default function CalendarPage() {
                           if (dayData.date.getMonth() !== displayMonth.getMonth()) {
                             setDisplayMonth(dayData.date)
                           }
-                          // 날짜 클릭 시 다이얼로그 열기
-                          setNewEventDate(dayData.date)
-                          setDialogDisplayMonth(dayData.date)
-                          setIsAddEventDialogOpen(true)
                         }}
                         className={`text-xs rounded-full w-7 h-7 flex items-center justify-center transition-colors relative cursor-pointer ${
                           dayData.isToday && !dayData.isSelected
@@ -456,8 +452,8 @@ export default function CalendarPage() {
 
         {/* Calendar View */}
         <div
-          className={`flex-1 flex flex-col opacity-0 bg-black/5 rounded-xl border border-black/10 shadow-sm ${isLoaded ? "animate-fade-in" : ""} ${isMobile ? "min-h-0" : ""}`}
-          style={{ animationDelay: "0.6s", ...(isMobile ? { height: "60vh", maxHeight: "60vh" } : {}) }}
+          className={`${isMobile ? "w-full" : "flex-1"} flex flex-col opacity-0 bg-black/5 rounded-xl border border-black/10 shadow-sm ${isLoaded ? "animate-fade-in" : ""}`}
+          style={{ animationDelay: "0.6s", ...(isMobile ? { height: "60vh", minHeight: "60vh" } : {}) }}
         >
           <CustomScrollbar className={`flex-1 overflow-y-auto ${isMobile ? "min-h-0" : "min-h-0"}`}>
             {/* Week Header */}
