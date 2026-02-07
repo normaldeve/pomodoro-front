@@ -587,6 +587,7 @@ export interface StudyRoomResponse {
   hostId: number
   status: RoomStatus
   timerType: TimerType
+  isPermanent: boolean
   createdAt: string
 }
 

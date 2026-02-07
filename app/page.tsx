@@ -316,6 +316,18 @@ function HomePageInner() {
     fetchStudyRooms()
   }, [fetchStudyRooms])
 
+  // 주기적으로 상시 운영 방 자동 갱신 (30초마다)
+  useEffect(() => {
+    // 페이지가 보이지 않으면 폴링하지 않음
+    if (document.hidden) return
+
+    const interval = setInterval(() => {
+      fetchPermanentRooms()
+    }, 30000) // 30초마다 갱신
+
+    return () => clearInterval(interval)
+  }, [fetchPermanentRooms])
+
   // 주기적으로 방 목록 자동 갱신 (30초마다)
   useEffect(() => {
     // 페이지가 보이지 않으면 폴링하지 않음
@@ -327,6 +339,28 @@ function HomePageInner() {
 
     return () => clearInterval(interval)
   }, [fetchStudyRooms])
+
+  // 페이지 포커스 시 상시 운영 방 자동 갱신
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // 페이지가 다시 보이게 되면 상시 운영 방 목록 갱신
+      if (!document.hidden) {
+        fetchPermanentRooms()
+      }
+    }
+
+    const handleFocus = () => {
+      fetchPermanentRooms()
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("focus", handleFocus)
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("focus", handleFocus)
+    }
+  }, [fetchPermanentRooms])
 
   // 페이지 포커스 시 방 목록 자동 갱신
   useEffect(() => {
@@ -413,16 +447,6 @@ function HomePageInner() {
             </span>
           </button>
 
-          {/* Center: 검색창 */}
-          <div className="relative flex-1 max-w-md md:max-w-lg mx-2 md:mx-4 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-black" />
-            <input
-              type="text"
-              placeholder="스터디 이름이나 태그로 검색해보세요!"
-              className="w-full rounded-full bg-[#f5f5f5] py-2 md:py-2.5 pl-9 md:pl-10 pr-3 text-xs md:text-sm text-black placeholder:text-gray-500 outline-none border border-transparent focus:border-gray-300 transition-colors"
-            />
-          </div>
-
           {/* Right: 로그인 버튼 (로그인하지 않은 경우만 표시) */}
           <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
             {!isLoggedIn && (
@@ -496,6 +520,8 @@ function HomePageInner() {
                   </h2>
                   <p className="text-xs md:text-sm text-black/60">
                     본인 공부 리듬에 맞는 방을 선택하세요
+                    <br />
+                    타이머는 정각에 맞춰져 있어요
                   </p>
                 </div>
               </header>
@@ -770,7 +796,7 @@ function HomePageInner() {
                         transitionDuration: "0.3s",
                         transitionTimingFunction: "ease-out",
                         transitionDelay: `${700 + index * 100}ms`,
-                        minHeight: "130px",
+                        minHeight: "100px",
                       }}
                       role="button"
                       tabIndex={0}
@@ -779,9 +805,9 @@ function HomePageInner() {
                         setIsEnterDialogOpen(true)
                       }}
                     >
-                      <CardHeader className="relative px-4 pb-2" style={{ minHeight: "48px" }}>
+                      <CardHeader className="relative px-4 pb-1.5" style={{ minHeight: "40px" }}>
                         {/* 방 상태와 타이머 종류 - 제목 위 */}
-                        <div className="flex items-center gap-1.5 mb-2">
+                        <div className="flex items-center gap-1.5 mb-1.5">
                           {/* 방 상태 배지 */}
                           <span
                             className="px-2 py-0.5 rounded-md text-[10px] md:text-xs font-semibold flex-shrink-0 bg-gray-100/50"
@@ -824,8 +850,8 @@ function HomePageInner() {
                           </span>
                         </div>
                       </CardHeader>
-                      <CardContent className="px-4 pt-0 pb-2" style={{ minHeight: "60px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-                        <div className="flex flex-col gap-2">
+                      <CardContent className="px-4 pt-0 pb-2" style={{ minHeight: "40px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                        <div className="flex flex-col gap-1.5">
                           <div className="flex items-end justify-between gap-2">
                             {/* 해시태그 */}
                             <div className="flex flex-wrap gap-1.5">
@@ -833,10 +859,9 @@ function HomePageInner() {
                                 room.hashtags.map((tag, index) => (
                                   <span
                                     key={index}
-                                    className="px-2 py-1 rounded-md text-xs md:text-sm font-bold"
+                                    className="px-2 py-1 rounded-md text-[10px] md:text-xs"
                                     style={{
-                                      background: "rgba(0, 0, 0, 0.05)",
-                                      color: "#2c5f2d",
+                                      color: "black",
                                     }}
                                   >
                                     {tag.startsWith("#") ? tag : `#${tag}`}
@@ -848,7 +873,7 @@ function HomePageInner() {
                             </div>
                             {/* 세션 정보 및 집중/휴식 정보 */}
                             <div 
-                              className="flex flex-col items-end"
+                              className="flex flex-col items-end pr-5"
                               style={{
                                 gap: "8px",
                               }}
@@ -862,26 +887,33 @@ function HomePageInner() {
                                   {room.currentSession} / {room.totalSessions}
                                 </span>
                               </div>
-                              {/* 집중/휴식 정보 또는 설정 전 */}
-                              <div style={{ display: "flex", alignItems: "center" }}>
+                              {/* 집중/휴식 정보 */}
+                              <div className="flex items-center gap-2">
                                 {room.status !== "before_start" ? (
-                                  <span
-                                    className="text-sm md:text-base font-bold"
-                                    style={{
-                                      color: "black",
-                                    }}
-                                  >
-                                    {room.focusMinutes}분 집중 → {room.breakMinutes}분 휴식
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    {/* 집중 시간 */}
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100/50">
+                                      <Zap className="h-3 w-3 text-black" />
+                                      <span className="text-xs md:text-sm font-bold text-black">
+                                        {room.focusMinutes}분
+                                      </span>
+                                    </div>
+                                    {/* 화살표 */}
+                                    <span className="text-black font-bold">→</span>
+                                    {/* 휴식 시간 */}
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100/50">
+                                      <Coffee className="h-3 w-3 text-black" />
+                                      <span className="text-xs md:text-sm font-bold text-black">
+                                        {room.breakMinutes}분
+                                      </span>
+                                    </div>
+                                  </div>
                                 ) : (
-                                  <span
-                                    className="text-sm md:text-base font-bold"
-                                    style={{
-                                      color: "black",
-                                    }}
-                                  >
-                                    설정 전
-                                  </span>
+                                  <div className="px-2.5 py-1 rounded-lg bg-gray-100/50 border border-gray-200/50">
+                                    <span className="text-xs md:text-sm font-medium text-gray-500">
+                                      설정 전
+                                    </span>
+                                  </div>
                                 )}
                               </div>
                             </div>

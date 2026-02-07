@@ -60,6 +60,7 @@ function MemberRoomPageInner() {
     hostId: number
     status: string
     timerType: string
+    isPermanent: boolean
     createdAt: string
   } | null>(null)
   const [participants, setParticipants] = useState<StudyRoomMemberResponse[]>([])
@@ -732,6 +733,7 @@ function MemberRoomPageInner() {
                         externalTimerState={timerState}
                         externalMinutes={dialMinutes}
                         roomStatus={roomInfo?.status}
+                        isPermanent={roomInfo?.isPermanent || false}
                       />
                     </div>
                   ) : (
@@ -741,6 +743,7 @@ function MemberRoomPageInner() {
                         externalTimerState={timerState}
                         externalMinutes={dialMinutes}
                         roomStatus={roomInfo?.status}
+                        isPermanent={roomInfo?.isPermanent || false}
                       />
                     </div>
                   )}
@@ -977,7 +980,7 @@ function MemberRoomPageInner() {
         open={isReflectionDialogOpen}
         onOpenChange={setIsReflectionDialogOpen}
         onSubmit={handleReflectionSubmit}
-        sessionNumber={currentReflectionSessionId ?? roomInfo?.currentSession}
+        sessionNumber={roomInfo?.isPermanent ? undefined : (currentReflectionSessionId ?? roomInfo?.currentSession)}
       />
 
       {/* 방장 변경 알림 다이얼로그 */}

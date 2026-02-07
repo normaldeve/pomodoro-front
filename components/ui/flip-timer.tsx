@@ -25,6 +25,11 @@ export interface FlipTimerProps {
   onDragEnd?: (minutes: number) => void
   onNextFocusMinutesSet?: (minutes: number) => void
   roomStatus?: string
+  /**
+   * 상시 운영 방 여부
+   * true일 경우 세션 정보를 표시하지 않음
+   */
+  isPermanent?: boolean
 }
 
 // 집중 시간 색상
@@ -78,6 +83,7 @@ export function FlipTimer({
   disabled = false,
   externalTimerState = null,
   externalMinutes = null,
+  isPermanent = false,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -352,6 +358,14 @@ export function FlipTimer({
             {phaseTitle}
           </span>
         </div>
+        {!isWaiting && !isPermanent && (
+          <div
+            className="text-sm font-sans"
+            style={{ color: colors.textLight }}
+          >
+            현재 세션 {effectiveCurrentSession} / {effectiveTotalSessions}
+          </div>
+        )}
       </div>
 
       {/* 플립 타이머 표시 */}

@@ -77,6 +77,11 @@ export interface PomodoroTimerProps {
    * 방 상태 (FINISHED일 때 타이머 종료 표시)
    */
   roomStatus?: string
+  /**
+   * 상시 운영 방 여부
+   * true일 경우 세션 정보를 표시하지 않음
+   */
+  isPermanent?: boolean
 }
 
 // 집중 시간 색상 (시스템 primary 그린 팔레트)
@@ -133,6 +138,7 @@ export function PomodoroTimer({
   onDragEnd,
   onNextFocusMinutesSet,
   roomStatus,
+  isPermanent = false,
 }: PomodoroTimerProps) {
   const initialMinutes = Math.min(60, Math.max(1, defaultMinutes))
   const [minutes, setMinutes] = useState(initialMinutes)
@@ -512,8 +518,17 @@ export function PomodoroTimer({
         </div>
       )}
 
-      {/* Title */}
+      {/* Title + session info */}
       <div className="flex flex-col items-center gap-2">
+        {/* 세션 정보는 WAITING 상태가 아니고 상시 운영 방이 아닐 때만 표시 */}
+        {!isWaiting && !isPermanent && (
+          <div
+            className="text-lg font-medium font-sans"
+            style={{ color: colors.text }}
+          >
+            현재 세션 {effectiveCurrentSession} / {effectiveTotalSessions}
+          </div>
+        )}
       </div>
 
       {/* Timer dial */}

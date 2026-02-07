@@ -72,6 +72,7 @@ function HostRoomPageInner() {
     hostId: number
     status: string
     timerType: string
+    isPermanent: boolean
     createdAt: string
   } | null>(null)
   const [participants, setParticipants] = useState<StudyRoomMemberResponse[]>([])
@@ -771,6 +772,7 @@ function HostRoomPageInner() {
                         totalSessions={roomInfo?.totalSessions || 4}
                         externalTimerState={timerState}
                         roomStatus={roomInfo?.status}
+                        isPermanent={roomInfo?.isPermanent || false}
                         onDragStart={() => sendDialDrag("DIAL_DRAG_START", 0)}
                         onDragMove={(minutes) => sendDialDrag("DIAL_DRAG_MOVE", minutes)}
                         onDragEnd={(minutes) => sendDialDrag("DIAL_DRAG_END", minutes)}
@@ -803,6 +805,7 @@ function HostRoomPageInner() {
                         totalSessions={roomInfo?.totalSessions || 4}
                         externalTimerState={timerState}
                         roomStatus={roomInfo?.status}
+                        isPermanent={roomInfo?.isPermanent || false}
                         onDragStart={() => sendDialDrag("DIAL_DRAG_START", 0)}
                         onDragMove={(minutes) => sendDialDrag("DIAL_DRAG_MOVE", minutes)}
                         onDragEnd={(minutes) => sendDialDrag("DIAL_DRAG_END", minutes)}
@@ -1085,7 +1088,7 @@ function HostRoomPageInner() {
         open={isReflectionDialogOpen}
         onOpenChange={setIsReflectionDialogOpen}
         onSubmit={handleReflectionSubmit}
-        sessionNumber={currentReflectionSessionId ?? roomInfo?.currentSession}
+        sessionNumber={roomInfo?.isPermanent ? undefined : (currentReflectionSessionId ?? roomInfo?.currentSession)}
       />
 
       {/* 방장 변경 알림 다이얼로그 */}
