@@ -325,7 +325,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Main Content */}
-        <main className={`relative w-full flex gap-4 ${isMobile ? "flex-col" : ""}`} style={{ height: "calc(100vh - 200px)" }}>
+        <main className={`relative w-full flex gap-4 ${isMobile ? "flex-col" : ""}`} style={{ height: isMobile ? "auto" : "calc(100vh - 200px)" }}>
         {/* Sidebar */}
         <div
           className={`${isMobile ? "w-full" : "w-64 shrink-0"} bg-black/5 p-4 shadow-xl border border-black/10 rounded-xl opacity-0 ${isLoaded ? "animate-fade-in" : ""} flex flex-col justify-between`}
@@ -456,10 +456,10 @@ export default function CalendarPage() {
 
         {/* Calendar View */}
         <div
-          className={`flex-1 flex flex-col opacity-0 bg-black/5 rounded-xl border border-black/10 shadow-sm ${isLoaded ? "animate-fade-in" : ""}`}
-          style={{ animationDelay: "0.6s" }}
+          className={`flex-1 flex flex-col opacity-0 bg-black/5 rounded-xl border border-black/10 shadow-sm ${isLoaded ? "animate-fade-in" : ""} ${isMobile ? "min-h-0" : ""}`}
+          style={{ animationDelay: "0.6s", ...(isMobile ? { height: "60vh", maxHeight: "60vh" } : {}) }}
         >
-          <CustomScrollbar className="flex-1 overflow-y-auto min-h-0">
+          <CustomScrollbar className={`flex-1 overflow-y-auto ${isMobile ? "min-h-0" : "min-h-0"}`}>
             {/* Week Header */}
             <div 
               className="grid border-b border-black/10"
