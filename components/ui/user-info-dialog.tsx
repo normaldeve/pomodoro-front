@@ -327,7 +327,7 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
                       서비스 피드백
                     </h3>
                     <p className="text-sm" style={{ color: colors.textLight }}>
-                      뽀개더를 이용해 주셔서 감사합니다.
+                      POGATHER를 이용해 주셔서 감사합니다.
                       <br />
                       더 나은 서비스 개선을 위해 피드백을 남겨주세요.
                     </p>

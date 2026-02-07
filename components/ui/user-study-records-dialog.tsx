@@ -322,8 +322,8 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
                 </div>
               </div>
               
-              {/* 그리드 레이아웃: 4개씩 3줄 */}
-              <div className="grid grid-cols-4 gap-3">
+              {/* 그리드 레이아웃: 모바일 2열, 데스크탑 4열 */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3">
                 {calendarData.months.map((monthDays, monthIndex) => {
                   const monthDate = monthDays.find(d => d.date.getTime() !== 0)?.date || new Date()
                   const today = new Date()
@@ -351,14 +351,14 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
                       >
                         {monthDate.getMonth() + 1}월
                       </div>
-                      <div className="grid grid-cols-7 gap-1">
+                      <div className="grid grid-cols-7 gap-2 md:gap-1">
                         {monthDays.map((day, dayIndex) => {
                           if (day.date.getTime() === 0) {
-                            return <div key={dayIndex} className="w-3 h-3" />
+                            return <div key={dayIndex} className="w-3 h-3 md:w-3 md:h-3" />
                           }
                           const isCurrentMonthDay = day.date.getMonth() === monthDate.getMonth()
                           if (!isCurrentMonthDay) {
-                            return <div key={dayIndex} className="w-3 h-3" />
+                            return <div key={dayIndex} className="w-3 h-3 md:w-3 md:h-3" />
                           }
                           const dateStr = formatDateString(day.date)
                           const totalMinutes = studyMinutesMap.get(dateStr) ?? 0
@@ -370,7 +370,7 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
                               totalMinutes={totalMinutes}
                             >
                               <div
-                                className="w-3 h-3 rounded-sm cursor-pointer"
+                                className="w-3 h-3 md:w-3 md:h-3 rounded-sm cursor-pointer"
                                 style={{
                                   background: getColorByLevel(day.level),
                                 }}

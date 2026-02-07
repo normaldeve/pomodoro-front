@@ -232,11 +232,11 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
           <DialogDescription className="text-center" style={{ color: colors.textLight }}>
             {isSignUp ? (
               <>
-                <span className="font-service-name">뽀개더</span>에 가입하고 함께해요
+                <span className="font-service-name">POGATHER</span>에 가입하고 함께해요
               </>
             ) : (
               <>
-                <span className="font-service-name">뽀개더</span>에 오신 것을 환영합니다
+                <span className="font-service-name">POGATHER</span>에 오신 것을 환영합니다
               </>
             )}
           </DialogDescription>

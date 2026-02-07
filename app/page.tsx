@@ -309,7 +309,7 @@ function HomePageInner() {
       <div className="relative z-10 flex w-full max-w-2xl flex-col gap-4">
         {/* Header */}
         <header
-          className="relative flex items-center justify-between gap-4 py-3 text-xs md:text-sm text-black transition-all duration-700 ease-out h-[50px]"
+          className="relative flex items-center justify-between gap-4 py-3 text-xs md:text-sm text-black transition-all duration-700 ease-out"
           style={{
             opacity: showHeader ? 1 : 0,
             transform: showHeader ? "translateY(0)" : "translateY(-20px)",
@@ -321,36 +321,36 @@ function HomePageInner() {
             onClick={() => window.location.reload()}
             className="flex items-center gap-2 md:gap-3 cursor-pointer flex-shrink-0"
           >
-            <Image
-              src="/images/home_icon.png"
-              alt="홈으로 이동"
-              width={64}
-              height={64}
-              className="w-10 h-10 md:w-16 md:h-16 object-contain"
-              style={{
-                filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))",
-              }}
-              priority
-            />
             <span
-              className="text-lg md:text-2xl font-bold font-service-name"
+              className="text-lg md:text-2xl font-black font-service-name"
               style={{
                 letterSpacing: "0.05em",
                 color: "#2c5f2d",
+                fontWeight: 900,
               }}
             >
-              뽀개더
+              POGATHER
             </span>
           </button>
+
+          {/* Center: 검색창 */}
+          <div className="relative flex-1 max-w-lg md:max-w-xl mx-2 md:mx-4 min-w-0">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-black" />
+            <input
+              type="text"
+              placeholder="스터디 이름이나 태그로 검색해보세요!"
+              className="w-full rounded-full bg-[#f5f5f5] py-2.5 md:py-3 pl-10 md:pl-12 pr-4 text-sm md:text-base text-black placeholder:text-gray-500 outline-none border border-transparent focus:border-gray-300 transition-colors"
+            />
+          </div>
 
           {/* Right: 로그인 버튼 (로그인하지 않은 경우만 표시) */}
           <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
             {!isLoggedIn && (
               <button
                 onClick={() => setIsLoginModalOpen(true)}
-                className="px-4 py-2 rounded-full border border-black/10 bg-white text-xs md:text-sm font-semibold text-black shadow-sm hover:bg-black/5 transition-colors"
+                className="px-5 py-2.5 rounded-lg bg-[#2c5f2d] text-xs md:text-sm font-bold text-white shadow-md hover:bg-[#2c5f2d]/90 transition-colors"
               >
-                로그인
+                뽀개더 시작하기
               </button>
             )}
           </div>
@@ -414,7 +414,7 @@ function HomePageInner() {
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                   <div className="flex-1 w-full md:w-auto">
                     <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-base md:text-lg font-semibold text-black">
+                      <h2 className="text-2xl md:text-3xl font-semibold text-black">
                         진행 중인 스터디
                       </h2>
                     </div>
@@ -443,22 +443,11 @@ function HomePageInner() {
                       </div>
                     </div>
                   </div>
-                  {/* 오른쪽 상단: 총 방 개수와 검색창 */}
-                  <div className="flex flex-col items-start md:items-end gap-2 md:gap-3 w-full md:w-auto">
-                    <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-                      <span className="text-xs md:text-sm text-black/60 whitespace-nowrap">
-                        총 {totalRooms}개 방
-                      </span>
-                    </div>
-                    {/* 검색창 */}
-                    <div className="relative w-full md:w-[240px] lg:w-[280px]">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="스터디 이름이나 태그로 검색해보세요!"
-                        className="w-full rounded-full bg-[#f5f5f5] py-2 pl-8 pr-3 text-xs text-black placeholder:text-gray-500 outline-none border border-transparent focus:border-gray-300 transition-colors"
-                      />
-                    </div>
+                  {/* 오른쪽 상단: 총 방 개수 */}
+                  <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                    <span className="text-xs md:text-sm text-black/60 whitespace-nowrap">
+                      총 {totalRooms}개 방
+                    </span>
                   </div>
                 </div>
               </header>
