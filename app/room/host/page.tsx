@@ -666,9 +666,6 @@ function HostRoomPageInner() {
                   ) : (
                     <VolumeX className="w-4 h-4 text-black/50" />
                   )}
-                  <Label htmlFor="sound-toggle" className="text-xs text-black/70 cursor-pointer">
-                    시계
-                  </Label>
                   <Switch
                     id="sound-toggle"
                     checked={soundEnabled}
@@ -918,7 +915,7 @@ function HostRoomPageInner() {
             <button
               type="button"
               onClick={() => setIsFloatingMenuOpen((prev) => !prev)}
-              className={`relative flex items-center justify-center w-12 h-12 rounded-full bg-[#2c5f2d] text-white shadow-lg shadow-[#2c5f2d]/40 border-2 border-white/70 hover:bg-[#2c5f2d]/90 transition-all z-10 ${
+              className={`relative flex items-center justify-center w-12 h-12 rounded-full bg-[#f59e0b] text-white shadow-lg shadow-[#f59e0b]/40 border-2 border-white/70 hover:bg-[#f59e0b]/90 transition-all z-10 ${
                 isFloatingMenuOpen ? 'rotate-90' : ''
               }`}
               aria-label="메뉴"

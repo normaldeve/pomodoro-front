@@ -514,26 +514,11 @@ export function PomodoroTimer({
 
       {/* Title + session info */}
       <div className="flex flex-col items-center gap-2">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{
-              background: colors.main,
-              boxShadow: `0 0 10px ${colors.shadow}`,
-            }}
-          />
-          <span
-            className="text-xl font-medium font-sans"
-            style={{ color: colors.text }}
-          >
-            {phaseTitle}
-          </span>
-        </div>
         {/* 세션 정보는 WAITING 상태가 아닐 때만 표시 */}
         {!isWaiting && (
           <div
-            className="text-sm font-sans"
-            style={{ color: colors.textLight }}
+            className="text-lg font-medium font-sans"
+            style={{ color: colors.text }}
           >
             현재 세션 {effectiveCurrentSession} / {effectiveTotalSessions}
           </div>
@@ -568,8 +553,6 @@ export function PomodoroTimer({
             }}
           />
 
-          {/* Center point */}
-          <circle cx={center} cy={center} r={4} fill={colors.text} />
 
           {/* Draggable handle - 집중 시간 변경 모드 중이거나, 일반 드래그 모드일 때 표시 */}
           {((isEditingNextFocus) || (!isRunning && !disabled && !isExternalControl)) && (

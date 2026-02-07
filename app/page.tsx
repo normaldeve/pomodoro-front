@@ -628,7 +628,7 @@ function HomePageInner() {
                               <div style={{ display: "flex", alignItems: "center" }}>
                                 {room.status !== "before_start" ? (
                                   <span
-                                    className="text-base md:text-lg font-bold"
+                                    className="text-sm md:text-base font-bold"
                                     style={{
                                       color: "black",
                                     }}
@@ -637,7 +637,7 @@ function HomePageInner() {
                                   </span>
                                 ) : (
                                   <span
-                                    className="text-base md:text-lg font-bold"
+                                    className="text-sm md:text-base font-bold"
                                     style={{
                                       color: "black",
                                     }}
