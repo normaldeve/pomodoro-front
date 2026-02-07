@@ -627,7 +627,7 @@ function HomePageInner() {
                                       key={index}
                                       className="px-2 py-1 rounded-md text-[10px] md:text-xs"
                                       style={{
-                                        color: "#2c5f2d",
+                                        color: "black",
                                       }}
                                     >
                                       {tag.startsWith("#") ? tag : `#${tag}`}
@@ -643,8 +643,8 @@ function HomePageInner() {
                                   <div className="flex items-center gap-2">
                                     {/* 집중 시간 */}
                                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100/50">
-                                      <Zap className="h-3 w-3 text-red-600" />
-                                      <span className="text-xs md:text-sm font-bold text-red-600">
+                                      <Zap className="h-3 w-3 text-black" />
+                                      <span className="text-xs md:text-sm font-bold text-black">
                                         {room.focusMinutes}분
                                       </span>
                                     </div>
@@ -652,8 +652,8 @@ function HomePageInner() {
                                     <span className="text-black font-bold">→</span>
                                     {/* 휴식 시간 */}
                                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100/50">
-                                      <Coffee className="h-3 w-3 text-amber-600" />
-                                      <span className="text-xs md:text-sm font-bold text-amber-600">
+                                      <Coffee className="h-3 w-3 text-black" />
+                                      <span className="text-xs md:text-sm font-bold text-black">
                                         {room.breakMinutes}분
                                       </span>
                                     </div>
