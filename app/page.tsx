@@ -19,7 +19,7 @@ const PomodoroDialStatic = dynamic(() => import("@/components/ui/pomodoro-dial-s
 const FlipTimerStatic = dynamic(() => import("@/components/ui/flip-timer-static").then((mod) => mod.FlipTimerStatic), {
   ssr: false,
 })
-import { DoorOpen, Plus, Search, User, Lock, X, Trophy, HelpCircle, Clock, ChevronLeft, ChevronRight, Home, Settings, Timer, FlipHorizontal } from "lucide-react"
+import { DoorOpen, Plus, Search, User, Lock, X, Trophy, HelpCircle, Clock, ChevronLeft, ChevronRight, Home, Settings, Timer, FlipHorizontal, Coffee, Zap } from "lucide-react"
 const CustomScrollbar = dynamic(() => import("@/components/ui/custom-scrollbar").then((mod) => mod.CustomScrollbar), { ssr: false })
 import {
   Dialog,
@@ -32,7 +32,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { logoutApi, createStudyRoom, ApiError, getStudyRooms, StudyRoomListResponse, StudyRoomStatus, TimerType, getCurrentUser, getParticipateRoomInfo } from "@/lib/api"
+import { logoutApi, createStudyRoom, ApiError, getStudyRooms, StudyRoomListResponse, StudyRoomStatus, TimerType, getCurrentUser, getParticipateRoomInfo, getPermanentRooms, StudyRoomResponse } from "@/lib/api"
 import { showSuccessNotification } from "@/lib/system-notification"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -103,6 +103,27 @@ function mapToStudyRoom(response: StudyRoomListResponse): StudyRoom {
   }
 }
 
+// StudyRoomResponse를 프론트엔드 StudyRoom으로 변환
+function mapStudyRoomResponseToStudyRoom(response: StudyRoomResponse): StudyRoom {
+  // StudyRoomResponse의 status는 RoomStatus 타입이지만, 실제로는 StudyRoomStatus 값이 올 수 있음
+  // 백엔드에서 StudyRoomStatus를 사용하므로 타입 변환 필요
+  const backendStatus = response.status as unknown as StudyRoomStatus
+  return {
+    id: response.roomId,
+    name: response.title,
+    status: mapStatus(backendStatus),
+    participants: response.currentParticipants,
+    totalParticipants: response.maxParticipants,
+    isPrivate: response.secret,
+    hashtags: response.hashtags,
+    totalSessions: response.totalSessions,
+    currentSession: response.currentSession,
+    focusMinutes: response.focusMinutes,
+    breakMinutes: response.breakMinutes,
+    timerType: response.timerType,
+  }
+}
+
 function HomePageInner() {
   const router = useRouter()
   const pathname = usePathname()
@@ -121,6 +142,8 @@ function HomePageInner() {
   const [totalPages, setTotalPages] = useState(0) // 전체 페이지 수
   const [totalRooms, setTotalRooms] = useState(0) // 전체 방 개수
   const [isLoadingRooms, setIsLoadingRooms] = useState(false) // 로딩 상태
+  const [permanentRooms, setPermanentRooms] = useState<StudyRoom[]>([]) // 상시 운영 방 목록
+  const [isLoadingPermanentRooms, setIsLoadingPermanentRooms] = useState(false) // 상시 운영 방 로딩 상태
   const [isCreateRoomDialogOpen, setIsCreateRoomDialogOpen] = useState(false) // 방 생성 다이얼로그 상태
   const [selectedRoom, setSelectedRoom] = useState<StudyRoom | null>(null) // 선택된 스터디
   const [isEnterDialogOpen, setIsEnterDialogOpen] = useState(false) // 입장 다이얼로그 상태
@@ -249,6 +272,21 @@ function HomePageInner() {
     })()
   }, [isLoggedIn, searchParams, router])
 
+  // 상시 운영 방 목록 조회
+  const fetchPermanentRooms = useCallback(async () => {
+    setIsLoadingPermanentRooms(true)
+    try {
+      const response = await getPermanentRooms()
+      const rooms = response.map(mapStudyRoomResponseToStudyRoom)
+      setPermanentRooms(rooms)
+    } catch (error) {
+      console.error("Failed to fetch permanent rooms:", error)
+      setPermanentRooms([])
+    } finally {
+      setIsLoadingPermanentRooms(false)
+    }
+  }, [])
+
   // 스터디룸 목록 조회
   const fetchStudyRooms = useCallback(async () => {
     setIsLoadingRooms(true)
@@ -267,6 +305,11 @@ function HomePageInner() {
       setIsLoadingRooms(false)
     }
   }, [currentPage])
+
+  // 초기 로드 시 상시 운영 방 조회
+  useEffect(() => {
+    fetchPermanentRooms()
+  }, [fetchPermanentRooms])
 
   // 초기 로드 및 페이지 변경 시 방 목록 조회
   useEffect(() => {
@@ -371,12 +414,12 @@ function HomePageInner() {
           </button>
 
           {/* Center: 검색창 */}
-          <div className="relative flex-1 max-w-lg md:max-w-xl mx-2 md:mx-4 min-w-0">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-black" />
+          <div className="relative flex-1 max-w-md md:max-w-lg mx-2 md:mx-4 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-black" />
             <input
               type="text"
               placeholder="스터디 이름이나 태그로 검색해보세요!"
-              className="w-full rounded-full bg-[#f5f5f5] py-2.5 md:py-3 pl-10 md:pl-12 pr-4 text-sm md:text-base text-black placeholder:text-gray-500 outline-none border border-transparent focus:border-gray-300 transition-colors"
+              className="w-full rounded-full bg-[#f5f5f5] py-2 md:py-2.5 pl-9 md:pl-10 pr-3 text-xs md:text-sm text-black placeholder:text-gray-500 outline-none border border-transparent focus:border-gray-300 transition-colors"
             />
           </div>
 
@@ -438,9 +481,204 @@ function HomePageInner() {
               </div>
             </div>
 
+            {/* 상시 운영 방 섹션 - 지금 함께해요! */}
+            <section
+              className="flex flex-col gap-4 transition-all duration-700 ease-out pb-6 mb-6 border-b-2 border-black/10"
+              style={{
+                opacity: showRooms ? 1 : 0,
+                transform: showRooms ? "translateY(0)" : "translateY(20px)",
+              }}
+            >
+              <header className="flex flex-col gap-3 px-2">
+                <div className="flex flex-col gap-2">
+                  <h2 className="text-2xl md:text-3xl font-semibold text-black">
+                    지금 함께해요!
+                  </h2>
+                  <p className="text-xs md:text-sm text-black/60">
+                    본인 공부 리듬에 맞는 방을 선택하세요
+                  </p>
+                </div>
+              </header>
+
+              <div className="grid grid-cols-1 gap-3 md:gap-4">
+                {isLoadingPermanentRooms ? (
+                  <div className="col-span-full text-center py-8 text-xs md:text-sm text-black/60">
+                    로딩 중...
+                  </div>
+                ) : permanentRooms.length === 0 ? (
+                  <div className="col-span-full text-center py-8 text-xs md:text-sm text-black/60">
+                    상시 운영 방이 없습니다.
+                  </div>
+                ) : (
+                  permanentRooms.map((room, index) => {
+                    // 상태별 스타일 및 텍스트 설정
+                    const getStatusConfig = (status: RoomStatus) => {
+                      switch (status) {
+                        case "before_start":
+                          return {
+                            text: "시작 전",
+                            textColor: "#22c55e",
+                            indicatorColor: "bg-white",
+                            shadow: "none",
+                            hasAnimation: false,
+                          }
+                        case "focus":
+                          return {
+                            text: "집중 시간",
+                            textColor: "#d2001a",
+                            indicatorColor: "bg-white",
+                            shadow: "none",
+                            hasAnimation: false,
+                          }
+                        case "break":
+                          return {
+                            text: "쉬는 시간",
+                            textColor: "#f59e0b",
+                            indicatorColor: "bg-white",
+                            shadow: "none",
+                            hasAnimation: false,
+                          }
+                        case "session_end":
+                          return {
+                            text: "세션 종료",
+                            textColor: "#9ca3af",
+                            indicatorColor: "bg-white opacity-50",
+                            shadow: "none",
+                            hasAnimation: false,
+                          }
+                      }
+                    }
+
+                    const statusConfig = getStatusConfig(room.status)
+                    
+                    return (
+                      <Card
+                        key={room.id}
+                        className="group rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-[#2c5f2d] shadow-[0_16px_40px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 cursor-pointer h-full flex flex-col"
+                        style={{
+                          opacity: showRooms ? 1 : 0,
+                          transform: showRooms ? "translateY(0)" : "translateY(20px)",
+                          transitionProperty: "transform, box-shadow, opacity",
+                          transitionDuration: "0.3s",
+                          transitionTimingFunction: "ease-out",
+                          transitionDelay: `${700 + index * 100}ms`,
+                          minHeight: "100px",
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          setSelectedRoom(room)
+                          setIsEnterDialogOpen(true)
+                        }}
+                      >
+                        <CardHeader className="relative px-4 pb-1.5" style={{ minHeight: "40px" }}>
+                          {/* 방 상태와 타이머 종류 - 제목 위 */}
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            {/* 방 상태 배지 */}
+                            <span
+                              className="px-2 py-0.5 rounded-md text-[10px] md:text-xs font-semibold flex-shrink-0 bg-gray-100/50"
+                              style={{
+                                color: statusConfig.textColor,
+                              }}
+                            >
+                              {statusConfig.text}
+                            </span>
+                            {/* 타이머 타입 표시 */}
+                            <span
+                              className="px-2 py-0.5 rounded-md text-[10px] md:text-xs font-semibold flex-shrink-0 flex items-center gap-1"
+                              style={{
+                                background: room.timerType === TimerType.POMODORO ? "#d9f2d9" : "#e0e7ff",
+                                color: room.timerType === TimerType.POMODORO ? "#2c5f2d" : "#4f46e5",
+                              }}
+                            >
+                              {room.timerType === TimerType.POMODORO ? (
+                                <Timer className="h-3 w-3" />
+                              ) : (
+                                <FlipHorizontal className="h-3 w-3" />
+                              )}
+                              <span>{room.timerType === TimerType.POMODORO ? "뽀모도로" : "플립"}</span>
+                            </span>
+                          </div>
+                          {/* 제목 */}
+                          <div className="pr-20 flex items-center gap-2">
+                            <CardTitle className="text-sm md:text-base font-bold text-black line-clamp-2">
+                              {room.name}
+                            </CardTitle>
+                            {room.isPrivate && (
+                              <Lock className="h-4 w-4 text-black/60 flex-shrink-0" />
+                            )}
+                          </div>
+                          {/* 참여 인원 - 오른쪽 상단 절대 위치 */}
+                          <div className="absolute top-0 right-5 flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/60 border border-gray-300">
+                            <User className="h-3.5 w-3.5 text-black/70" />
+                            <span className="text-xs font-medium text-black/80">
+                              {room.participants} / {room.totalParticipants}
+                            </span>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="px-4 pt-0 pb-2" style={{ minHeight: "40px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-end justify-between gap-2">
+                              {/* 해시태그 */}
+                              <div className="flex flex-wrap gap-1.5">
+                                {room.hashtags && room.hashtags.length > 0 ? (
+                                  room.hashtags.map((tag, index) => (
+                                    <span
+                                      key={index}
+                                      className="px-2 py-1 rounded-md text-[10px] md:text-xs"
+                                      style={{
+                                        color: "#2c5f2d",
+                                      }}
+                                    >
+                                      {tag.startsWith("#") ? tag : `#${tag}`}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <div style={{ minHeight: "24px" }}></div>
+                                )}
+                              </div>
+                              {/* 집중/휴식 정보 */}
+                              <div className="flex items-center gap-2">
+                                {room.status !== "before_start" ? (
+                                  <div className="flex items-center gap-2">
+                                    {/* 집중 시간 */}
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100/50">
+                                      <Zap className="h-3 w-3 text-red-600" />
+                                      <span className="text-xs md:text-sm font-bold text-red-600">
+                                        {room.focusMinutes}분
+                                      </span>
+                                    </div>
+                                    {/* 화살표 */}
+                                    <span className="text-black font-bold">→</span>
+                                    {/* 휴식 시간 */}
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100/50">
+                                      <Coffee className="h-3 w-3 text-amber-600" />
+                                      <span className="text-xs md:text-sm font-bold text-amber-600">
+                                        {room.breakMinutes}분
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="px-2.5 py-1 rounded-lg bg-gray-100/50 border border-gray-200/50">
+                                    <span className="text-xs md:text-sm font-medium text-gray-500">
+                                      설정 전
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })
+                )}
+              </div>
+            </section>
+
             {/* Room list */}
             <section
-              className="flex flex-col gap-4 transition-all duration-700 ease-out"
+              className="flex flex-col gap-4 transition-all duration-700 ease-out pt-6"
               style={{
                 opacity: showRooms ? 1 : 0,
                 transform: showRooms ? "translateY(0)" : "translateY(20px)",
@@ -450,10 +688,15 @@ function HomePageInner() {
               <header className="flex flex-col gap-3 px-2">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                   <div className="flex-1 w-full md:w-auto">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-2xl md:text-3xl font-semibold text-black">
-                        진행 중인 스터디
-                      </h2>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-2xl md:text-3xl font-semibold text-black">
+                          진행 중인 스터디
+                        </h2>
+                      </div>
+                      <p className="text-xs md:text-sm text-black/60">
+                        같이 공부하고 싶은 스터디를 선택해보세요
+                      </p>
                     </div>
                   </div>
                   {/* 오른쪽 상단: 총 방 개수 */}
@@ -482,8 +725,7 @@ function HomePageInner() {
                       case "before_start":
                         return {
                           text: "시작 전",
-                          bgColor: "#22c55e",
-                          textColor: "white",
+                          textColor: "#22c55e",
                           indicatorColor: "bg-white",
                           shadow: "none",
                           hasAnimation: false,
@@ -491,8 +733,7 @@ function HomePageInner() {
                       case "focus":
                         return {
                           text: "집중 시간",
-                          bgColor: "#d2001a",
-                          textColor: "white",
+                          textColor: "#d2001a",
                           indicatorColor: "bg-white",
                           shadow: "none",
                           hasAnimation: false,
@@ -500,8 +741,7 @@ function HomePageInner() {
                       case "break":
                         return {
                           text: "쉬는 시간",
-                          bgColor: "#f59e0b",
-                          textColor: "white",
+                          textColor: "#f59e0b",
                           indicatorColor: "bg-white",
                           shadow: "none",
                           hasAnimation: false,
@@ -509,8 +749,7 @@ function HomePageInner() {
                       case "session_end":
                         return {
                           text: "세션 종료",
-                          bgColor: "#9ca3af",
-                          textColor: "white",
+                          textColor: "#9ca3af",
                           indicatorColor: "bg-white opacity-50",
                           shadow: "none",
                           hasAnimation: false,
@@ -542,12 +781,11 @@ function HomePageInner() {
                     >
                       <CardHeader className="relative px-4 pb-2" style={{ minHeight: "48px" }}>
                         {/* 방 상태와 타이머 종류 - 제목 위 */}
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-1.5 mb-2">
                           {/* 방 상태 배지 */}
                           <span
-                            className="px-3 py-1 rounded-md text-xs md:text-sm font-semibold flex-shrink-0"
+                            className="px-2 py-0.5 rounded-md text-[10px] md:text-xs font-semibold flex-shrink-0 bg-gray-100/50"
                             style={{
-                              backgroundColor: statusConfig.bgColor,
                               color: statusConfig.textColor,
                             }}
                           >
@@ -555,16 +793,16 @@ function HomePageInner() {
                           </span>
                           {/* 타이머 타입 표시 */}
                           <span
-                            className="px-3 py-1 rounded-md text-xs md:text-sm font-semibold flex-shrink-0 flex items-center gap-1.5"
+                            className="px-2 py-0.5 rounded-md text-[10px] md:text-xs font-semibold flex-shrink-0 flex items-center gap-1"
                             style={{
                               background: room.timerType === TimerType.POMODORO ? "#d9f2d9" : "#e0e7ff",
                               color: room.timerType === TimerType.POMODORO ? "#2c5f2d" : "#4f46e5",
                             }}
                           >
                             {room.timerType === TimerType.POMODORO ? (
-                              <Timer className="h-3.5 w-3.5" />
+                              <Timer className="h-3 w-3" />
                             ) : (
-                              <FlipHorizontal className="h-3.5 w-3.5" />
+                              <FlipHorizontal className="h-3 w-3" />
                             )}
                             <span>{room.timerType === TimerType.POMODORO ? "뽀모도로" : "플립"}</span>
                           </span>

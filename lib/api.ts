@@ -44,6 +44,8 @@ export const API_ENDPOINTS = {
   CREATE_STUDY_ROOM: `${API_BASE_URL}/api/study/create`,
   // 스터디룸 조회
   GET_STUDY_ROOMS: `${API_BASE_URL}/api/study/all`,
+  // 상시 운영 방 조회
+  GET_PERMANENT_ROOMS: `${API_BASE_URL}/api/study/permanent`,
   // 스터디룸 상세 조회
   GET_STUDY_ROOM: `${API_BASE_URL}/api/study`,
   // 목표 생성
@@ -678,6 +680,36 @@ export async function getStudyRooms(page: number = 0): Promise<PageResponse<Stud
 
   if (!response.ok) {
     return handleErrorResponse<PageResponse<StudyRoomListResponse>>(response)
+  }
+
+  return response.json()
+}
+
+/**
+ * 상시 운영 방 조회 API
+ */
+export async function getPermanentRooms(): Promise<StudyRoomResponse[]> {
+  // 인증 헤더가 필요없는 요청이므로 별도 fetch 사용
+  let response: Response
+  try {
+    response = await fetch(API_ENDPOINTS.GET_PERMANENT_ROOMS, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    // 요청이 성공하면 서버 연결 상태로 업데이트
+    setServerStatus(true)
+  } catch (error) {
+    // 네트워크 에러인 경우 서버 연결 끊김으로 표시
+    if (isNetworkError(error)) {
+      setServerStatus(false)
+    }
+    throw error
+  }
+
+  if (!response.ok) {
+    return handleErrorResponse<StudyRoomResponse[]>(response)
   }
 
   return response.json()

@@ -512,17 +512,8 @@ export function PomodoroTimer({
         </div>
       )}
 
-      {/* Title + session info */}
+      {/* Title */}
       <div className="flex flex-col items-center gap-2">
-        {/* 세션 정보는 WAITING 상태가 아닐 때만 표시 */}
-        {!isWaiting && (
-          <div
-            className="text-lg font-medium font-sans"
-            style={{ color: colors.text }}
-          >
-            현재 세션 {effectiveCurrentSession} / {effectiveTotalSessions}
-          </div>
-        )}
       </div>
 
       {/* Timer dial */}

@@ -352,14 +352,6 @@ export function FlipTimer({
             {phaseTitle}
           </span>
         </div>
-        {!isWaiting && (
-          <div
-            className="text-sm font-sans"
-            style={{ color: colors.textLight }}
-          >
-            현재 세션 {effectiveCurrentSession} / {effectiveTotalSessions}
-          </div>
-        )}
       </div>
 
       {/* 플립 타이머 표시 */}
