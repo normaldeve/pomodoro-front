@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
-import { CheckCircle2, Circle, Clock } from "lucide-react"
+import { CheckCircle2, Circle, Clock, Home } from "lucide-react"
 import { Reflection } from "@/components/ui/reflection"
 import { getMyGoals, getRoomReflections, getTodayRoomFocusTime, StudyGoalResponse, ReflectionResponse } from "@/lib/api"
 
@@ -404,13 +404,14 @@ function SessionSummaryPageInner() {
           </p>
           <button
             onClick={() => router.push("/")}
-            className="px-8 py-3 rounded-full font-sans font-medium text-sm transition-all duration-300 hover:scale-105"
+            className="px-8 py-3 rounded-full font-sans font-medium text-sm transition-all duration-300 hover:scale-105 cursor-pointer flex items-center gap-2"
             style={{
               background: colors.main,
               color: "white",
               boxShadow: `0 8px 32px ${colors.shadow}`,
             }}
           >
+            <Home className="w-4 h-4" />
             홈으로 돌아가기
           </button>
         </section>

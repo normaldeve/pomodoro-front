@@ -674,6 +674,7 @@ function HostRoomPageInner() {
                       setSoundEnabledState(checked)
                       setSoundEnabled(checked)
                     }}
+                    className="cursor-pointer"
                   />
                 </div>
               </div>
@@ -918,7 +919,7 @@ function HostRoomPageInner() {
             <button
               type="button"
               onClick={() => setIsFloatingMenuOpen((prev) => !prev)}
-              className={`relative flex items-center justify-center w-12 h-12 rounded-full bg-[#f59e0b] text-white shadow-lg shadow-[#f59e0b]/40 border-2 border-white/70 hover:bg-[#f59e0b]/90 transition-all z-10 ${
+              className={`relative flex items-center justify-center w-12 h-12 rounded-full bg-[#f59e0b] text-white shadow-lg shadow-[#f59e0b]/40 border-2 border-white/70 hover:bg-[#f59e0b]/90 transition-all z-10 cursor-pointer ${
                 isFloatingMenuOpen ? 'rotate-90' : ''
               }`}
               aria-label="메뉴"
@@ -947,7 +948,7 @@ function HostRoomPageInner() {
                     }
                     setIsFloatingMenuOpen(false)
                   }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border-2 border-[#2c5f2d] shadow-lg hover:bg-white transition-all whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border-2 border-[#2c5f2d] shadow-lg hover:bg-white transition-all whitespace-nowrap cursor-pointer"
                 >
                   <div className="relative flex items-center gap-1.5">
                     <MessageSquare className="w-4 h-4 text-[#2c5f2d] flex-shrink-0" />
@@ -967,7 +968,7 @@ function HostRoomPageInner() {
                     }
                     setIsFloatingMenuOpen(false)
                   }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border-2 border-[#2c5f2d] shadow-lg hover:bg-white transition-all whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border-2 border-[#2c5f2d] shadow-lg hover:bg-white transition-all whitespace-nowrap cursor-pointer"
                 >
                   <div className="relative flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-[#2c5f2d] flex-shrink-0" />
