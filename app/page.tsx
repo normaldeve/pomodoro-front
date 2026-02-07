@@ -19,7 +19,7 @@ const PomodoroDialStatic = dynamic(() => import("@/components/ui/pomodoro-dial-s
 const FlipTimerStatic = dynamic(() => import("@/components/ui/flip-timer-static").then((mod) => mod.FlipTimerStatic), {
   ssr: false,
 })
-import { DoorOpen, Plus, Search, User, Lock, X, Trophy, HelpCircle, Clock, ChevronLeft, ChevronRight, Home } from "lucide-react"
+import { DoorOpen, Plus, Search, User, Lock, X, Trophy, HelpCircle, Clock, ChevronLeft, ChevronRight, Home, Settings, Timer, FlipHorizontal } from "lucide-react"
 const CustomScrollbar = dynamic(() => import("@/components/ui/custom-scrollbar").then((mod) => mod.CustomScrollbar), { ssr: false })
 import {
   Dialog,
@@ -66,6 +66,7 @@ interface StudyRoom {
   currentSession: number
   focusMinutes: number
   breakMinutes: number
+  timerType: TimerType
 }
 
 // 백엔드 StudyRoomStatus를 프론트엔드 RoomStatus로 변환
@@ -98,6 +99,7 @@ function mapToStudyRoom(response: StudyRoomListResponse): StudyRoom {
     currentSession: response.currentSession,
     focusMinutes: response.focusMinutes,
     breakMinutes: response.breakMinutes,
+    timerType: response.timerType,
   }
 }
 
@@ -266,8 +268,43 @@ function HomePageInner() {
     }
   }, [currentPage])
 
+  // 초기 로드 및 페이지 변경 시 방 목록 조회
   useEffect(() => {
     fetchStudyRooms()
+  }, [fetchStudyRooms])
+
+  // 주기적으로 방 목록 자동 갱신 (30초마다)
+  useEffect(() => {
+    // 페이지가 보이지 않으면 폴링하지 않음
+    if (document.hidden) return
+
+    const interval = setInterval(() => {
+      fetchStudyRooms()
+    }, 30000) // 30초마다 갱신
+
+    return () => clearInterval(interval)
+  }, [fetchStudyRooms])
+
+  // 페이지 포커스 시 방 목록 자동 갱신
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // 페이지가 다시 보이게 되면 방 목록 갱신
+      if (!document.hidden) {
+        fetchStudyRooms()
+      }
+    }
+
+    const handleFocus = () => {
+      fetchStudyRooms()
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("focus", handleFocus)
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("focus", handleFocus)
+    }
   }, [fetchStudyRooms])
 
   // 로딩 애니메이션 효과
@@ -418,30 +455,6 @@ function HomePageInner() {
                         진행 중인 스터디
                       </h2>
                     </div>
-                    {/* 상태 색상 설명 */}
-                    <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-2">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: "#22c55e" }}
-                        />
-                        <span className="text-xs text-black/60">시작 전</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: "#d2001a" }}
-                        />
-                        <span className="text-xs text-black/60">집중 시간</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: "#f59e0b" }}
-                        />
-                        <span className="text-xs text-black/60">쉬는 시간</span>
-                      </div>
-                    </div>
                   </div>
                   {/* 오른쪽 상단: 총 방 개수 */}
                   <div className="flex items-center gap-2 w-full md:w-auto justify-end">
@@ -518,7 +531,7 @@ function HomePageInner() {
                         transitionDuration: "0.3s",
                         transitionTimingFunction: "ease-out",
                         transitionDelay: `${700 + index * 100}ms`,
-                        minHeight: "110px",
+                        minHeight: "130px",
                       }}
                       role="button"
                       tabIndex={0}
@@ -528,18 +541,36 @@ function HomePageInner() {
                       }}
                     >
                       <CardHeader className="relative px-4 pb-2" style={{ minHeight: "48px" }}>
-                        {/* 제목 */}
-                        <div className="pr-20 flex items-center gap-2">
-                          {/* 상태 인디케이터 - 제목 앞 */}
+                        {/* 방 상태와 타이머 종류 - 제목 위 */}
+                        <div className="flex items-center gap-2 mb-2">
+                          {/* 방 상태 배지 */}
                           <span
-                            className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                              statusConfig.hasAnimation ? "onair-indicator" : ""
-                            }`}
+                            className="px-3 py-1 rounded-md text-xs md:text-sm font-semibold flex-shrink-0"
                             style={{
                               backgroundColor: statusConfig.bgColor,
-                              boxShadow: statusConfig.shadow === "none" ? "none" : statusConfig.shadow,
+                              color: statusConfig.textColor,
                             }}
-                          />
+                          >
+                            {statusConfig.text}
+                          </span>
+                          {/* 타이머 타입 표시 */}
+                          <span
+                            className="px-3 py-1 rounded-md text-xs md:text-sm font-semibold flex-shrink-0 flex items-center gap-1.5"
+                            style={{
+                              background: room.timerType === TimerType.POMODORO ? "#d9f2d9" : "#e0e7ff",
+                              color: room.timerType === TimerType.POMODORO ? "#2c5f2d" : "#4f46e5",
+                            }}
+                          >
+                            {room.timerType === TimerType.POMODORO ? (
+                              <Timer className="h-3.5 w-3.5" />
+                            ) : (
+                              <FlipHorizontal className="h-3.5 w-3.5" />
+                            )}
+                            <span>{room.timerType === TimerType.POMODORO ? "뽀모도로" : "플립"}</span>
+                          </span>
+                        </div>
+                        {/* 제목 */}
+                        <div className="pr-20 flex items-center gap-2">
                           <CardTitle className="text-sm md:text-base font-bold text-black line-clamp-2">
                             {room.name}
                           </CardTitle>
@@ -555,73 +586,65 @@ function HomePageInner() {
                           </span>
                         </div>
                       </CardHeader>
-                      <CardContent className="px-4 pt-0 pb-1" style={{ height: "44px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                      <CardContent className="px-4 pt-0 pb-2" style={{ minHeight: "60px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
                         <div className="flex flex-col gap-2">
-                          {/* 해시태그 */}
-                          {room.hashtags && room.hashtags.length > 0 && (
+                          <div className="flex items-end justify-between gap-2">
+                            {/* 해시태그 */}
                             <div className="flex flex-wrap gap-1.5">
-                              {room.hashtags.map((tag, index) => (
-                                <span
-                                  key={index}
-                                  className="px-2 py-1 rounded-md text-[10px] md:text-xs font-medium"
-                                  style={{
-                                    background: "#d9f2d9",
-                                    color: "rgba(0, 0, 0, 0.7)",
-                                  }}
-                                >
-                                  {tag.startsWith("#") ? tag : `#${tag}`}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {/* 구분선 - 전체 너비 */}
-                          <div 
-                            className="w-full"
-                            style={{
-                              borderTop: "1px solid rgba(0, 0, 0, 0.1)",
-                              paddingTop: "2px",
-                              height: "28px",
-                              display: "flex",
-                              alignItems: "center",
-                            }}
-                          >
-                            <div className="flex justify-between items-center w-full">
-                              {/* 왼쪽: 집중/휴식 정보 또는 설정 전 */}
-                              <div style={{ height: "24px", display: "flex", alignItems: "center" }}>
-                                {room.status !== "before_start" ? (
+                              {room.hashtags && room.hashtags.length > 0 ? (
+                                room.hashtags.map((tag, index) => (
                                   <span
-                                    className="px-2 rounded-md text-xs md:text-sm font-medium"
+                                    key={index}
+                                    className="px-2 py-1 rounded-md text-xs md:text-sm font-bold"
                                     style={{
                                       background: "rgba(0, 0, 0, 0.05)",
-                                      color: "rgba(0, 0, 0, 0.7)",
-                                      paddingTop: "2px",
-                                      paddingBottom: "2px",
+                                      color: "#2c5f2d",
+                                    }}
+                                  >
+                                    {tag.startsWith("#") ? tag : `#${tag}`}
+                                  </span>
+                                ))
+                              ) : (
+                                <div style={{ minHeight: "24px" }}></div>
+                              )}
+                            </div>
+                            {/* 세션 정보 및 집중/휴식 정보 */}
+                            <div 
+                              className="flex flex-col items-end"
+                              style={{
+                                gap: "8px",
+                              }}
+                            >
+                              {/* 세션 정보 */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm md:text-base text-black/60">
+                                  세션
+                                </span>
+                                <span className="text-base md:text-lg font-semibold text-black/80 tabular-nums">
+                                  {room.currentSession} / {room.totalSessions}
+                                </span>
+                              </div>
+                              {/* 집중/휴식 정보 또는 설정 전 */}
+                              <div style={{ display: "flex", alignItems: "center" }}>
+                                {room.status !== "before_start" ? (
+                                  <span
+                                    className="text-base md:text-lg font-bold"
+                                    style={{
+                                      color: "black",
                                     }}
                                   >
                                     {room.focusMinutes}분 집중 → {room.breakMinutes}분 휴식
                                   </span>
                                 ) : (
                                   <span
-                                    className="px-2 rounded-md text-xs md:text-sm font-medium"
+                                    className="text-base md:text-lg font-bold"
                                     style={{
-                                      background: "rgba(0, 0, 0, 0.05)",
-                                      color: "rgba(0, 0, 0, 0.7)",
-                                      paddingTop: "2px",
-                                      paddingBottom: "2px",
+                                      color: "black",
                                     }}
                                   >
                                     설정 전
                                   </span>
                                 )}
-                              </div>
-                              {/* 오른쪽: 세션 정보 */}
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs md:text-sm text-black/60">
-                                  세션
-                                </span>
-                                <span className="text-sm md:text-base font-semibold text-black/80 tabular-nums">
-                                  {room.currentSession} / {room.totalSessions}
-                                </span>
                               </div>
                             </div>
                           </div>
@@ -1337,7 +1360,7 @@ function HomePageInner() {
               <span className="text-[10px] font-medium">공부 기록</span>
             </button>
 
-            {/* 나의 정보 */}
+            {/* 설정 */}
             <button
               type="button"
               onClick={() => {
@@ -1349,8 +1372,8 @@ function HomePageInner() {
               }}
               className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-black/60 hover:text-black/80 cursor-pointer"
             >
-              <User className="h-5 w-5" />
-              <span className="text-[10px] font-medium">나의 정보</span>
+              <Settings className="h-5 w-5" />
+              <span className="text-[10px] font-medium">설정</span>
             </button>
           </div>
         </div>

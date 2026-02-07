@@ -136,14 +136,10 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
         }}
       >
         <DialogHeader>
-          <DialogTitle
-            className="text-2xl font-semibold text-center"
-            style={{ color: colors.text }}
-          >
-            내 정보
+          <DialogTitle className="sr-only">
+            설정
           </DialogTitle>
         </DialogHeader>
-
         <Tabs defaultValue="profile" className="flex-1 flex flex-col min-h-0 mt-4">
           <TabsList
             className="grid w-full grid-cols-3 mb-4 p-1"
@@ -188,8 +184,8 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
           <CustomScrollbar className="flex-1 overflow-y-auto min-h-0">
             <TabsContent value="profile" className="mt-0">
               <div className="flex flex-col gap-4 px-2">
-                <div className="flex justify-center mb-4">
-                  <div className="relative">
+                <div className="flex items-center gap-6 mb-4">
+                  <div className="relative flex-shrink-0">
                     <div
                       className="w-24 h-24 rounded-full border-4 border-white shadow-lg flex items-center justify-center overflow-hidden"
                       style={{ backgroundColor: "#c5d4c0" }}
@@ -206,7 +202,7 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
                     </div>
                     <label
                       htmlFor="profile-image-input"
-                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary border-2 border-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors"
+                      className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary border-2 border-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors"
                     >
                       <Camera className="w-4 h-4 text-white" />
                     </label>
@@ -218,48 +214,36 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
                       className="hidden"
                     />
                   </div>
-                </div>
 
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="profile-id" className="text-sm font-medium">
-                    ID
-                  </Label>
-                  <Input
-                    id="profile-id"
-                    type="text"
-                    value={userId}
-                    readOnly
-                    disabled
-                    className="bg-gray-100 cursor-not-allowed"
-                  />
-                </div>
+                  <div className="flex flex-col gap-4 flex-1">
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="profile-id" className="text-sm font-bold">
+                        ID
+                      </Label>
+                      <div className="text-sm text-black py-2">
+                        {userId}
+                      </div>
+                    </div>
 
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="profile-nickname" className="text-sm font-medium">
-                    닉네임
-                  </Label>
-                  <Input
-                    id="profile-nickname"
-                    type="text"
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    className="bg-white"
-                  />
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="profile-nickname" className="text-sm font-bold">
+                        닉네임
+                      </Label>
+                      <Input
+                        id="profile-nickname"
+                        type="text"
+                        value={nickname}
+                        onChange={(e) => setNickname(e.target.value)}
+                        className="bg-white"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-3 mt-4">
-                  <div className="flex justify-end">
-                    <Button
-                      className="bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={handleSaveProfile}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "저장 중..." : "저장"}
-                    </Button>
-                  </div>
-                  <div className="border-t border-gray-200 pt-4">
-                    <Button
-                      className="w-full bg-red-600 hover:bg-red-700 text-white"
+                  <div className="flex justify-between items-center">
+                    <button
+                      className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
                       onClick={async () => {
                         try {
                           await logoutApi()
@@ -273,8 +257,14 @@ export function UserInfoDialog({ open, onOpenChange }: UserInfoDialogProps) {
                         window.location.href = '/'
                       }}
                     >
-                      <DoorOpen className="w-4 h-4 mr-2" />
                       로그아웃
+                    </button>
+                    <Button
+                      className="bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleSaveProfile}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? "저장 중..." : "저장"}
                     </Button>
                   </div>
                 </div>

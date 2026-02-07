@@ -197,14 +197,10 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
         }}
       >
         <DialogHeader>
-          <DialogTitle
-            className="text-2xl font-semibold text-center"
-            style={{ color: colors.text }}
-          >
+          <DialogTitle className="sr-only">
             공부 기록
           </DialogTitle>
         </DialogHeader>
-
         <Tabs defaultValue="mypomo" className="flex-1 flex flex-col min-h-0 mt-4">
           <TabsList
             className="grid w-full grid-cols-2 mb-4 p-1"
@@ -221,7 +217,7 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
                 color: colors.text,
               }}
             >
-              <span>나의 뽀모</span>
+              <span>통계</span>
             </TabsTrigger>
             <TabsTrigger
               value="records"
@@ -230,7 +226,7 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
                 color: colors.text,
               }}
             >
-              <span>공부 기록</span>
+              <span>나무심기</span>
             </TabsTrigger>
           </TabsList>
 
@@ -246,10 +242,10 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
                 />
                 <div className="flex flex-col items-center gap-2 text-center">
                   <h3 className="text-lg font-semibold" style={{ color: colors.text }}>
-                    나의 뽀모도 기능 개발 중
+                    통계 기능 개발 중
                   </h3>
                   <p className="text-sm text-gray-600">
-                    나의 뽀모도 기능은 현재 개발 중이에요.
+                    통계 기능은 현재 개발 중이에요.
                     <br />
                     곧 만나볼 수 있을 거예요!
                   </p>
@@ -294,7 +290,7 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
               
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-sm font-semibold" style={{ color: colors.text }}>
-                  공부 기록
+                  🌳 공부 시간을 통해 나무를 심어보세요!
                 </h3>
                 <div className="flex items-center gap-3 text-xs text-gray-600">
                   <div className="flex flex-col gap-1">
