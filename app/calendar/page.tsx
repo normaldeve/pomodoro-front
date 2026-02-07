@@ -325,10 +325,10 @@ export default function CalendarPage() {
         </div>
 
         {/* Main Content */}
-        <main className="relative w-full flex gap-4" style={{ height: "calc(100vh - 200px)" }}>
+        <main className={`relative w-full flex gap-4 ${isMobile ? "flex-col" : ""}`} style={{ height: "calc(100vh - 200px)" }}>
         {/* Sidebar */}
         <div
-          className={`w-64 shrink-0 bg-black/5 p-4 shadow-xl border border-black/10 rounded-xl opacity-0 ${isLoaded ? "animate-fade-in" : ""} flex flex-col justify-between`}
+          className={`${isMobile ? "w-full" : "w-64 shrink-0"} bg-black/5 p-4 shadow-xl border border-black/10 rounded-xl opacity-0 ${isLoaded ? "animate-fade-in" : ""} flex flex-col justify-between`}
           style={{ animationDelay: "0.4s" }}
         >
           <CustomScrollbar className="flex-1 overflow-y-auto min-h-0">
