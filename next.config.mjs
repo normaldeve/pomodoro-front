@@ -14,7 +14,7 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   // 프로덕션 빌드 최적화
-  swcMinify: true,
+  // swcMinify는 Next.js 15에서 기본적으로 활성화되어 있어 더 이상 설정할 필요 없음
   compress: true,
   // 프로덕션에서 소스맵 비활성화 (번들 크기 감소)
   productionBrowserSourceMaps: false,

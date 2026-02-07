@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import dynamic from "next/dynamic"
@@ -21,7 +21,6 @@ export const metadata: Metadata = {
   title: "뽀개더 - 함께 포모도로!",
   description: "뽀모도로로 함께 집중하는 공부방 서비스",
   generator: "v0.app",
-  themeColor: "#2c5f2d",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -32,6 +31,10 @@ export const metadata: Metadata = {
       { url: "/images/home_icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#2c5f2d",
 }
 
 export default function RootLayout({
