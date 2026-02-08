@@ -1585,7 +1585,13 @@ function HomePageInner() {
             {/* 캘린더 */}
             <button
               type="button"
-              onClick={() => router.push("/calendar")}
+              onClick={() => {
+                if (isLoggedIn) {
+                  router.push("/calendar")
+                } else {
+                  setIsLoginModalOpen(true)
+                }
+              }}
               className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
                 pathname === "/calendar"
                   ? "text-primary bg-primary/10"
