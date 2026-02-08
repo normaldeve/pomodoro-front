@@ -74,6 +74,12 @@ export const API_ENDPOINTS = {
   GET_MY_REFLECTIONS: `${API_BASE_URL}/api/reflections/my`,
   // 사용자 공부 통계 (히트맵)
   GET_MY_STUDY_STATS: `${API_BASE_URL}/api/stats/me`,
+  // 계획 생성
+  CREATE_PLAN: `${API_BASE_URL}/api/plans`,
+  // 기간별 계획 조회
+  GET_PLANS_BY_DATE_RANGE: `${API_BASE_URL}/api/plans/range`,
+  // 특정 날짜의 계획 조회
+  GET_PLANS_BY_DATE: `${API_BASE_URL}/api/plans/date`,
 } as const
 
 /**
@@ -1072,4 +1078,109 @@ export async function updateUserInfo(data: UpdateUserInfoRequest): Promise<UserI
   }
 
   return response.json()
+}
+
+/**
+ * 계획 관련 API
+ */
+export enum EventColor {
+  RED = 'RED',
+  ORANGE = 'ORANGE',
+  YELLOW = 'YELLOW',
+  GREEN = 'GREEN',
+  BLUE = 'BLUE',
+  INDIGO = 'INDIGO',
+  PURPLE = 'PURPLE',
+  PINK = 'PINK',
+}
+
+export interface CreatePlanRequest {
+  title: string
+  planDate: string // ISO 8601 형식 (YYYY-MM-DD)
+  startTime: string // HH:mm 형식
+  endTime: string // HH:mm 형식
+  color: EventColor
+}
+
+export interface UpdatePlanRequest {
+  title: string
+  planDate: string // ISO 8601 형식 (YYYY-MM-DD)
+  startTime: string // HH:mm 형식
+  endTime: string // HH:mm 형식
+  color: EventColor
+}
+
+export interface PlanResponse {
+  id: number
+  title: string
+  planDate: string // ISO 8601 형식 (YYYY-MM-DD)
+  startTime: string // HH:mm 형식
+  endTime: string // HH:mm 형식
+  color: EventColor
+  completed: boolean
+  createdAt: string // ISO 8601 형식
+  updatedAt: string // ISO 8601 형식
+}
+
+/**
+ * 계획 생성 API
+ */
+export async function createPlan(data: CreatePlanRequest): Promise<PlanResponse> {
+  return apiRequest<PlanResponse>(API_ENDPOINTS.CREATE_PLAN, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * 계획 수정 API
+ * @param planId 계획 ID
+ * @param data 수정할 계획 데이터
+ */
+export async function updatePlan(planId: number, data: UpdatePlanRequest): Promise<PlanResponse> {
+  return apiRequest<PlanResponse>(`${API_ENDPOINTS.CREATE_PLAN}/${planId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * 기간별 계획 조회 API (월별 캘린더용)
+ * @param startDate 시작 날짜 (YYYY-MM-DD 형식)
+ * @param endDate 종료 날짜 (YYYY-MM-DD 형식)
+ */
+export async function getPlansByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<PlanResponse[]> {
+  const params = new URLSearchParams()
+  params.append('startDate', startDate)
+  params.append('endDate', endDate)
+
+  return apiRequest<PlanResponse[]>(
+    `${API_ENDPOINTS.GET_PLANS_BY_DATE_RANGE}?${params.toString()}`,
+    {
+      method: 'GET',
+    }
+  )
+}
+
+/**
+ * 특정 날짜의 계획 조회 API (모바일용)
+ * @param date 날짜 (YYYY-MM-DD 형식)
+ */
+export async function getPlansByDate(date: string): Promise<PlanResponse[]> {
+  return apiRequest<PlanResponse[]>(`${API_ENDPOINTS.GET_PLANS_BY_DATE}/${date}`, {
+    method: 'GET',
+  })
+}
+
+/**
+ * 계획 삭제 API
+ * @param planId 계획 ID
+ */
+export async function deletePlan(planId: number): Promise<void> {
+  return apiRequest<void>(`${API_ENDPOINTS.CREATE_PLAN}/${planId}`, {
+    method: 'DELETE',
+  })
 }

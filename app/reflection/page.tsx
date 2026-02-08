@@ -481,9 +481,15 @@ export default function ReflectionPage() {
                 ) : selectedDate ? (
                   /* 회고가 없는 날을 클릭한 경우 */
                   <div className="bg-gray-800 rounded-xl p-6 shadow-lg text-white text-center">
-                    <p className="text-white/70">이 날짜에는 회고가 없습니다.</p>
+                    <p className="text-white/70 text-sm">이 날짜에는 회고가 없습니다.</p>
                   </div>
-                ) : null}
+                ) : (
+                  /* 초기 화면에서 작성한 회고가 없는 경우 */
+                  <div className="bg-gray-800 rounded-xl p-6 shadow-lg text-white text-center">
+                    <p className="text-white/70 mb-2 text-sm">아직 작성한 회고가 없어요</p>
+                    <p className="text-white/60 text-xs">스터디룸에서 학습 이후 회고를 작성해보세요</p>
+                  </div>
+                )}
               </div>
             </CustomScrollbar>
           </div>

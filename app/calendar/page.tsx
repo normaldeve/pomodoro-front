@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addDays, subDays } from "date-fns"
 import {
@@ -12,6 +12,8 @@ import {
   Plus,
   CheckCircle2,
   BookOpen,
+  X,
+  Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CustomScrollbar } from "@/components/ui/custom-scrollbar"
@@ -25,8 +27,11 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { createPlan, updatePlan, deletePlan, getPlansByDateRange, getPlansByDate, EventColor, PlanResponse, ApiError } from "@/lib/api"
+import { showSuccessNotification, showErrorNotification } from "@/lib/system-notification"
 
 interface Event {
+  id?: number // 계획 ID (수정/삭제 시 필요)
   title: string
   startTime: string
   endTime: string
@@ -47,6 +52,7 @@ export default function CalendarPage() {
   const [displayMonth, setDisplayMonth] = useState(new Date()) // 미니 캘린더에 표시할 월
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [isAddEventDialogOpen, setIsAddEventDialogOpen] = useState(false)
+  const [isEditEventDialogOpen, setIsEditEventDialogOpen] = useState(false) // 수정 다이얼로그 열림 상태
   const [events, setEvents] = useState<Event[]>([]) // 이벤트 목록 state
   const [newEventTitle, setNewEventTitle] = useState("")
   const [newEventStartTime, setNewEventStartTime] = useState("09:00")
@@ -55,6 +61,16 @@ export default function CalendarPage() {
   const [newEventDate, setNewEventDate] = useState(new Date())
   const [dialogDisplayMonth, setDialogDisplayMonth] = useState(new Date()) // 다이얼로그 내부 미니 캘린더용 월
   const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [isCreatingPlan, setIsCreatingPlan] = useState(false) // 계획 생성 중 상태
+  const [isUpdatingPlan, setIsUpdatingPlan] = useState(false) // 계획 수정 중 상태
+  
+  // 수정용 state
+  const [editEventTitle, setEditEventTitle] = useState("")
+  const [editEventStartTime, setEditEventStartTime] = useState("09:00")
+  const [editEventEndTime, setEditEventEndTime] = useState("10:00")
+  const [editEventColor, setEditEventColor] = useState("bg-red-500")
+  const [editEventDate, setEditEventDate] = useState(new Date())
+  const [editEventId, setEditEventId] = useState<number | undefined>(undefined)
   
   // 시간 선택 상태
   const [startTimePickerOpen, setStartTimePickerOpen] = useState(false)
@@ -92,6 +108,16 @@ export default function CalendarPage() {
   const formatTime = (hour: number, minute: number) => {
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
   }
+
+  // 시간 문자열에서 초 단위 제거 (HH:mm:ss -> HH:mm)
+  const formatTimeWithoutSeconds = (timeStr: string): string => {
+    if (!timeStr) return timeStr
+    // HH:mm:ss 형식이면 HH:mm만 반환
+    if (timeStr.includes(":") && timeStr.split(":").length === 3) {
+      return timeStr.substring(0, 5) // "HH:mm"만 추출
+    }
+    return timeStr // 이미 HH:mm 형식이면 그대로 반환
+  }
   
   const startTime = parseTime(newEventStartTime)
   const endTime = parseTime(newEventEndTime)
@@ -104,6 +130,19 @@ export default function CalendarPage() {
     setNewEventEndTime(formatTime(hour, minute))
   }
 
+  // 수정용 시간 변경 핸들러
+  const handleEditStartTimeChange = (hour: number, minute: number) => {
+    setEditEventStartTime(formatTime(hour, minute))
+  }
+
+  const handleEditEndTimeChange = (hour: number, minute: number) => {
+    setEditEventEndTime(formatTime(hour, minute))
+  }
+
+  // 수정용 시간 파싱
+  const editStartTime = parseTime(editEventStartTime)
+  const editEndTime = parseTime(editEventEndTime)
+
   useEffect(() => {
     setIsLoaded(true)
     setTimeout(() => setShowHeader(true), 100)
@@ -113,39 +152,182 @@ export default function CalendarPage() {
     setSelectedEvent(event)
   }
 
-  const handleAddEvent = () => {
+  // 프론트엔드 색상 클래스명을 백엔드 EventColor로 변환
+  const mapColorToEventColor = (colorClass: string): EventColor => {
+    const colorMap: Record<string, EventColor> = {
+      "bg-red-500": EventColor.RED,
+      "bg-orange-500": EventColor.ORANGE,
+      "bg-yellow-500": EventColor.YELLOW,
+      "bg-green-500": EventColor.GREEN,
+      "bg-blue-500": EventColor.BLUE,
+      "bg-indigo-500": EventColor.INDIGO,
+      "bg-purple-500": EventColor.PURPLE,
+      "bg-pink-500": EventColor.PINK,
+    }
+    return colorMap[colorClass] || EventColor.RED
+  }
+
+  // 백엔드 EventColor를 프론트엔드 색상 클래스명으로 변환
+  const mapEventColorToColor = (eventColor: EventColor): string => {
+    const colorMap: Record<EventColor, string> = {
+      [EventColor.RED]: "bg-red-500",
+      [EventColor.ORANGE]: "bg-orange-500",
+      [EventColor.YELLOW]: "bg-yellow-500",
+      [EventColor.GREEN]: "bg-green-500",
+      [EventColor.BLUE]: "bg-blue-500",
+      [EventColor.INDIGO]: "bg-indigo-500",
+      [EventColor.PURPLE]: "bg-purple-500",
+      [EventColor.PINK]: "bg-pink-500",
+    }
+    return colorMap[eventColor] || "bg-red-500"
+  }
+
+  const handleAddEvent = async () => {
     if (!newEventTitle.trim()) {
       return
     }
 
-    // 선택된 날짜가 주간 뷰에 표시되는 날짜 중 어느 날인지 찾기
-    const dayIndex = visibleDays.findIndex(day => 
-      format(day, "yyyy-MM-dd") === format(newEventDate, "yyyy-MM-dd")
-    )
+    setIsCreatingPlan(true)
 
-    const newEvent: Event = {
-      title: newEventTitle,
-      startTime: newEventStartTime,
-      endTime: newEventEndTime,
-      day: dayIndex >= 0 ? dayIndex + 1 : 1, // 주간 뷰 인덱스 (호환성 유지)
-      date: new Date(newEventDate), // 실제 날짜 저장
-      color: newEventColor,
-      completed: false, // 기본값: 미완료
-      completedAt: null, // 기본값: 완료 시간 없음
+    try {
+      // API 요청 데이터 준비
+      const planDate = format(newEventDate, "yyyy-MM-dd")
+      const requestData = {
+        title: newEventTitle.trim(),
+        planDate: planDate,
+        startTime: newEventStartTime,
+        endTime: newEventEndTime,
+        color: mapColorToEventColor(newEventColor),
+      }
+
+      // 백엔드 API 호출
+      const response = await createPlan(requestData)
+
+      // 선택된 날짜가 주간 뷰에 표시되는 날짜 중 어느 날인지 찾기
+      const dayIndex = visibleDays.findIndex(day => 
+        format(day, "yyyy-MM-dd") === format(newEventDate, "yyyy-MM-dd")
+      )
+
+      // 성공 알림
+      showSuccessNotification("학습 계획이 생성되었습니다.")
+      
+      // 계획 목록 다시 조회 (최신 데이터 반영)
+      let plans: PlanResponse[]
+      if (isMobile) {
+        // 모바일: 특정 날짜의 계획만 조회
+        const date = format(visibleDays[0], "yyyy-MM-dd")
+        plans = await getPlansByDate(date)
+      } else {
+        // 데스크톱: 기간별 계획 조회
+        const startDate = format(visibleDays[0], "yyyy-MM-dd")
+        const endDate = format(visibleDays[visibleDays.length - 1], "yyyy-MM-dd")
+        plans = await getPlansByDateRange(startDate, endDate)
+      }
+      const convertedEvents = plans.map(plan => convertPlanToEvent(plan, visibleDays))
+      setEvents(convertedEvents)
+      
+      // 폼 초기화 및 다이얼로그 닫기
+      setNewEventTitle("")
+      setNewEventStartTime("09:00")
+      setNewEventEndTime("10:00")
+      setNewEventColor("bg-red-500")
+      setNewEventDate(selectedDate)
+      setDialogDisplayMonth(selectedDate)
+      setIsAddEventDialogOpen(false)
+    } catch (error) {
+      // 에러는 apiRequest에서 이미 시스템 알림으로 표시됨
+      console.error("계획 생성 실패:", error)
+      if (error instanceof ApiError && error.requiresLogin) {
+        // 로그인 필요 에러는 별도 처리 (이미 시스템 알림 표시됨)
+      }
+    } finally {
+      setIsCreatingPlan(false)
     }
-    
-    // 이벤트를 state에 추가
-    setEvents(prev => [...prev, newEvent])
-    console.log("새 이벤트 추가:", newEvent)
-    
-    // 폼 초기화 및 다이얼로그 닫기
-    setNewEventTitle("")
-    setNewEventStartTime("09:00")
-    setNewEventEndTime("10:00")
-    setNewEventColor("bg-red-500")
-    setNewEventDate(selectedDate)
-    setDialogDisplayMonth(selectedDate)
-    setIsAddEventDialogOpen(false)
+  }
+
+  const handleEditEvent = async () => {
+    if (!editEventTitle.trim() || !editEventId) {
+      return
+    }
+
+    setIsUpdatingPlan(true)
+
+    try {
+      // API 요청 데이터 준비
+      const planDate = format(editEventDate, "yyyy-MM-dd")
+      const requestData = {
+        title: editEventTitle.trim(),
+        planDate: planDate,
+        startTime: editEventStartTime,
+        endTime: editEventEndTime,
+        color: mapColorToEventColor(editEventColor),
+      }
+
+      // 백엔드 API 호출
+      await updatePlan(editEventId, requestData)
+
+      // 성공 알림
+      showSuccessNotification("학습 계획이 수정되었습니다.")
+
+      // 계획 목록 다시 조회 (최신 데이터 반영)
+      let plans: PlanResponse[]
+      if (isMobile) {
+        const date = format(visibleDays[0], "yyyy-MM-dd")
+        plans = await getPlansByDate(date)
+      } else {
+        const startDate = format(visibleDays[0], "yyyy-MM-dd")
+        const endDate = format(visibleDays[visibleDays.length - 1], "yyyy-MM-dd")
+        plans = await getPlansByDateRange(startDate, endDate)
+      }
+      const convertedEvents = plans.map(plan => convertPlanToEvent(plan, visibleDays))
+      setEvents(convertedEvents)
+
+      // 폼 초기화 및 다이얼로그 닫기
+      setIsEditEventDialogOpen(false)
+    } catch (error) {
+      // 에러는 apiRequest에서 이미 시스템 알림으로 표시됨
+      console.error("계획 수정 실패:", error)
+      if (error instanceof ApiError && error.requiresLogin) {
+        // 로그인 필요 에러는 별도 처리 (이미 시스템 알림 표시됨)
+      }
+    } finally {
+      setIsUpdatingPlan(false)
+    }
+  }
+
+  const handleDeleteEvent = async () => {
+    if (!selectedEvent || !selectedEvent.id) {
+      return
+    }
+
+    try {
+      // 백엔드 API 호출
+      await deletePlan(selectedEvent.id)
+
+      // 성공 알림
+      showSuccessNotification("학습 계획이 삭제되었습니다.")
+
+      // 계획 목록 다시 조회 (최신 데이터 반영)
+      let plans: PlanResponse[]
+      if (isMobile) {
+        const date = format(visibleDays[0], "yyyy-MM-dd")
+        plans = await getPlansByDate(date)
+      } else {
+        const startDate = format(visibleDays[0], "yyyy-MM-dd")
+        const endDate = format(visibleDays[visibleDays.length - 1], "yyyy-MM-dd")
+        plans = await getPlansByDateRange(startDate, endDate)
+      }
+      const convertedEvents = plans.map(plan => convertPlanToEvent(plan, visibleDays))
+      setEvents(convertedEvents)
+
+      // 다이얼로그 닫기
+      setSelectedEvent(null)
+    } catch (error) {
+      console.error("계획 삭제 실패:", error)
+      if (error instanceof ApiError && error.requiresLogin) {
+        // 로그인 필요 에러는 별도 처리 (이미 시스템 알림 표시됨)
+      }
+    }
   }
   
   const colorOptions = [
@@ -174,6 +356,60 @@ export default function CalendarPage() {
     }
     return days
   }, [isMobile, selectedDate])
+
+  // PlanResponse를 Event 형식으로 변환
+  const convertPlanToEvent = (plan: PlanResponse, visibleDays: Date[]): Event => {
+    const planDate = new Date(plan.planDate)
+    const dayIndex = visibleDays.findIndex(day => 
+      format(day, "yyyy-MM-dd") === format(planDate, "yyyy-MM-dd")
+    )
+
+    return {
+      id: plan.id, // 계획 ID 추가
+      title: plan.title,
+      startTime: plan.startTime,
+      endTime: plan.endTime,
+      day: dayIndex >= 0 ? dayIndex + 1 : 1, // 주간 뷰 인덱스 (호환성 유지)
+      date: planDate, // 실제 날짜 저장
+      color: mapEventColorToColor(plan.color), // 백엔드 색상을 프론트엔드 색상으로 변환
+      completed: plan.completed,
+      completedAt: plan.completed ? new Date(plan.updatedAt) : null,
+    }
+  }
+
+  // visibleDays가 변경될 때마다 계획 조회
+  useEffect(() => {
+    const fetchPlans = async () => {
+      if (visibleDays.length === 0) return
+
+      try {
+        let plans: PlanResponse[]
+
+        if (isMobile) {
+          // 모바일: 특정 날짜의 계획만 조회
+          const date = format(visibleDays[0], "yyyy-MM-dd")
+          plans = await getPlansByDate(date)
+        } else {
+          // 데스크톱: 기간별 계획 조회
+          const startDate = format(visibleDays[0], "yyyy-MM-dd")
+          const endDate = format(visibleDays[visibleDays.length - 1], "yyyy-MM-dd")
+          plans = await getPlansByDateRange(startDate, endDate)
+        }
+
+        // PlanResponse를 Event 형식으로 변환
+        const convertedEvents = plans.map(plan => convertPlanToEvent(plan, visibleDays))
+
+        // 이벤트 목록 업데이트
+        setEvents(convertedEvents)
+      } catch (error) {
+        console.error("계획 조회 실패:", error)
+        // 에러는 apiRequest에서 이미 시스템 알림으로 표시됨
+        // 조회 실패 시 기존 이벤트 목록은 유지
+      }
+    }
+
+    fetchPlans()
+  }, [visibleDays, isMobile])
 
   const weekDays = useMemo(() => {
     const dayNames = ['일', '월', '화', '수', '목', '금', '토']
@@ -622,7 +858,7 @@ export default function CalendarPage() {
                           onClick={() => handleEventClick(event)}
                         >
                           <div className="font-medium">{event.title}</div>
-                          <div className="opacity-80 text-[10px] mt-1">{`${event.startTime} - ${event.endTime}`}</div>
+                          <div className="opacity-80 text-[10px] mt-1">{`${formatTimeWithoutSeconds(event.startTime)} - ${formatTimeWithoutSeconds(event.endTime)}`}</div>
                         </div>
                       )
                     })}
@@ -635,12 +871,22 @@ export default function CalendarPage() {
 
         {selectedEvent && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className={`${selectedEvent.color} p-6 rounded-lg shadow-xl max-w-md w-full mx-4`}>
-              <h3 className="text-2xl font-bold mb-4 text-white">{selectedEvent.title}</h3>
+            <div className={`${selectedEvent.color} p-6 rounded-lg shadow-xl max-w-md w-full mx-4 relative`}>
+              {/* X 버튼 - 오른쪽 상단 */}
+              <button
+                type="button"
+                onClick={() => setSelectedEvent(null)}
+                className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors cursor-pointer"
+                aria-label="닫기"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              
+              <h3 className="text-2xl font-bold mb-4 text-white pr-8">{selectedEvent.title}</h3>
               <div className="space-y-3 text-white">
                 <p className="flex items-center">
                   <Clock className="mr-2 h-5 w-5" />
-                  {`${selectedEvent.startTime} - ${selectedEvent.endTime}`}
+                  {`${formatTimeWithoutSeconds(selectedEvent.startTime)} - ${formatTimeWithoutSeconds(selectedEvent.endTime)}`}
                 </p>
                 <p className="flex items-center">
                   <Calendar className="mr-2 h-5 w-5" />
@@ -661,18 +907,29 @@ export default function CalendarPage() {
               <div className="mt-6 flex justify-end gap-2">
                 <Button
                   variant="secondary"
-                  className="bg-white text-foreground px-4 py-2 rounded cursor-pointer hover:!bg-white hover:!opacity-100 transition-transform hover:scale-105 active:scale-95"
-                  onClick={() => setSelectedEvent(null)}
+                  className="bg-red-500 text-white px-3 py-2 rounded cursor-pointer hover:!bg-red-600 hover:!opacity-100 transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
+                  onClick={handleDeleteEvent}
+                  aria-label="삭제하기"
                 >
-                  닫기
+                  <Trash2 className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="secondary"
                   className="bg-white text-foreground px-4 py-2 rounded cursor-pointer hover:!bg-white hover:!opacity-100 transition-transform hover:scale-105 active:scale-95"
                   onClick={() => {
-                    // TODO: 수정하기 기능 구현
-                    console.log("수정하기 클릭:", selectedEvent)
-                    setSelectedEvent(null)
+                    if (selectedEvent) {
+                      // 수정 폼에 선택된 이벤트 정보 채우기
+                      setEditEventId(selectedEvent.id)
+                      setEditEventTitle(selectedEvent.title)
+                      setEditEventStartTime(selectedEvent.startTime)
+                      setEditEventEndTime(selectedEvent.endTime)
+                      setEditEventColor(selectedEvent.color)
+                      setEditEventDate(selectedEvent.date)
+                      setDialogDisplayMonth(selectedEvent.date)
+                      // 상세 정보 모달 닫고 수정 다이얼로그 열기
+                      setSelectedEvent(null)
+                      setIsEditEventDialogOpen(true)
+                    }
                   }}
                 >
                   수정하기
@@ -932,9 +1189,9 @@ export default function CalendarPage() {
                             </button>
                           ))}
                         </CustomScrollbar>
-                        {/* 분 선택 */}
+                        {/* 분 선택 (10분 단위) */}
                         <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                          {Array.from({ length: 60 }, (_, i) => i).map((minute) => (
+                          {[0, 10, 20, 30, 40, 50].map((minute) => (
                             <button
                               key={minute}
                               type="button"
@@ -990,9 +1247,9 @@ export default function CalendarPage() {
                             </button>
                           ))}
                         </CustomScrollbar>
-                        {/* 분 선택 */}
+                        {/* 분 선택 (10분 단위) */}
                         <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                          {Array.from({ length: 60 }, (_, i) => i).map((minute) => (
+                          {[0, 10, 20, 30, 40, 50].map((minute) => (
                             <button
                               key={minute}
                               type="button"
@@ -1044,13 +1301,300 @@ export default function CalendarPage() {
             </Button>
             <Button
               onClick={handleAddEvent}
-              disabled={!newEventTitle.trim()}
+              disabled={!newEventTitle.trim() || isCreatingPlan}
               style={{
                 backgroundColor: "hsl(121, 37%, 27%)",
                 color: "white",
               }}
             >
-              추가하기
+              {isCreatingPlan ? "생성 중..." : "추가하기"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 할일 수정하기 다이얼로그 */}
+      <Dialog 
+        open={isEditEventDialogOpen} 
+        onOpenChange={(open) => {
+          setIsEditEventDialogOpen(open)
+          if (!open) {
+            // 다이얼로그 닫을 때 폼 초기화
+            setEditEventTitle("")
+            setEditEventStartTime("09:00")
+            setEditEventEndTime("10:00")
+            setEditEventColor("bg-red-500")
+            setEditEventDate(selectedDate)
+            setDialogDisplayMonth(selectedDate)
+            setEditEventId(undefined)
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>할일 수정하기</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-event-title">제목</Label>
+              <Input
+                id="edit-event-title"
+                placeholder="할일 제목을 입력하세요"
+                value={editEventTitle}
+                onChange={(e) => setEditEventTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>날짜</Label>
+              <div className="relative" ref={datePickerRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDatePickerOpen(!datePickerOpen)
+                    setStartTimePickerOpen(false)
+                    setEndTimePickerOpen(false)
+                  }}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white text-left flex items-center justify-between hover:border-primary transition-colors"
+                >
+                  <span className="text-sm">
+                    {format(editEventDate, "yyyy년 MM월 dd일")}
+                  </span>
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                </button>
+                {datePickerOpen && (
+                  <div className="absolute z-50 mt-2 w-full bg-white rounded-lg border border-gray-200 shadow-lg p-4">
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-foreground font-medium">{dialogCurrentMonth}</h3>
+                        <div className="flex gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="p-1 rounded-full hover:bg-black/10 h-auto w-auto cursor-pointer"
+                            onClick={() => {
+                              const newDate = new Date(dialogDisplayMonth)
+                              newDate.setMonth(newDate.getMonth() - 1)
+                              setDialogDisplayMonth(newDate)
+                            }}
+                          >
+                            <ChevronLeft className="h-4 w-4 text-foreground" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="p-1 rounded-full hover:bg-black/10 h-auto w-auto cursor-pointer"
+                            onClick={() => {
+                              const newDate = new Date(dialogDisplayMonth)
+                              newDate.setMonth(newDate.getMonth() + 1)
+                              setDialogDisplayMonth(newDate)
+                            }}
+                          >
+                            <ChevronRight className="h-4 w-4 text-foreground" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-1 text-center">
+                        {["일", "월", "화", "수", "목", "금", "토"].map((day, i) => (
+                          <div key={i} className="text-xs text-foreground/60 font-medium py-1">
+                            {day}
+                          </div>
+                        ))}
+
+                        {dialogMiniCalendarData.map((dayData, i) => {
+                          if (!dayData.isCurrentMonth) {
+                            return <div key={i} className="w-7 h-7"></div>
+                          }
+                          
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                setEditEventDate(dayData.date)
+                                if (dayData.date.getMonth() !== dialogDisplayMonth.getMonth()) {
+                                  setDialogDisplayMonth(dayData.date)
+                                }
+                                setDatePickerOpen(false)
+                              }}
+                              className={`text-xs rounded-full w-7 h-7 flex items-center justify-center transition-colors relative cursor-pointer ${
+                                dayData.isToday && !dayData.isSelected
+                                  ? "text-foreground"
+                                  : "text-foreground hover:bg-black/10"
+                              }`}
+                              style={{
+                                ...(dayData.isSelected ? {
+                                  backgroundColor: "#c5d4c0",
+                                  color: "#2c5f2d",
+                                } : {}),
+                                ...(dayData.isToday && !dayData.isSelected ? {
+                                  backgroundColor: "#c5d4c0",
+                                  border: "2px solid hsl(121, 37%, 27%)",
+                                } : {}),
+                              }}
+                            >
+                              {dayData.dayOfMonth}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>시작 시간</Label>
+                <div className="relative" ref={startTimePickerRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartTimePickerOpen(!startTimePickerOpen)
+                      setEndTimePickerOpen(false)
+                    }}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white text-left flex items-center justify-between hover:border-primary transition-colors"
+                  >
+                    <span className="text-sm">
+                      {String(editStartTime.hour).padStart(2, "0")}:{String(editStartTime.minute).padStart(2, "0")}
+                    </span>
+                    <Clock className="w-4 h-4 text-gray-400" />
+                  </button>
+                  {startTimePickerOpen && (
+                    <div className="absolute z-50 mt-2 w-full bg-white rounded-lg border border-gray-200 shadow-lg p-4">
+                      <div className="grid grid-cols-2 gap-2">
+                        <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                          {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                            <button
+                              key={hour}
+                              type="button"
+                              onClick={() => handleEditStartTimeChange(hour, editStartTime.minute)}
+                              className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                editStartTime.hour === hour
+                                  ? "bg-primary text-white"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }`}
+                            >
+                              {String(hour).padStart(2, "0")}
+                            </button>
+                          ))}
+                        </CustomScrollbar>
+                        <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                          {[0, 10, 20, 30, 40, 50].map((minute) => (
+                            <button
+                              key={minute}
+                              type="button"
+                              onClick={() => handleEditStartTimeChange(editStartTime.hour, minute)}
+                              className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                editStartTime.minute === minute
+                                  ? "bg-primary text-white"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }`}
+                            >
+                              {String(minute).padStart(2, "0")}
+                            </button>
+                          ))}
+                        </CustomScrollbar>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>끝나는 시간</Label>
+                <div className="relative" ref={endTimePickerRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEndTimePickerOpen(!endTimePickerOpen)
+                      setStartTimePickerOpen(false)
+                    }}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white text-left flex items-center justify-between hover:border-primary transition-colors"
+                  >
+                    <span className="text-sm">
+                      {String(editEndTime.hour).padStart(2, "0")}:{String(editEndTime.minute).padStart(2, "0")}
+                    </span>
+                    <Clock className="w-4 h-4 text-gray-400" />
+                  </button>
+                  {endTimePickerOpen && (
+                    <div className="absolute z-50 mt-2 w-full bg-white rounded-lg border border-gray-200 shadow-lg p-4">
+                      <div className="grid grid-cols-2 gap-2">
+                        <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                          {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                            <button
+                              key={hour}
+                              type="button"
+                              onClick={() => handleEditEndTimeChange(hour, editEndTime.minute)}
+                              className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                editEndTime.hour === hour
+                                  ? "bg-primary text-white"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }`}
+                            >
+                              {String(hour).padStart(2, "0")}
+                            </button>
+                          ))}
+                        </CustomScrollbar>
+                        <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                          {[0, 10, 20, 30, 40, 50].map((minute) => (
+                            <button
+                              key={minute}
+                              type="button"
+                              onClick={() => handleEditEndTimeChange(editEndTime.hour, minute)}
+                              className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                editEndTime.minute === minute
+                                  ? "bg-primary text-white"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }`}
+                            >
+                              {String(minute).padStart(2, "0")}
+                            </button>
+                          ))}
+                        </CustomScrollbar>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>색상</Label>
+              <div className="flex flex-wrap gap-3">
+                {colorOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setEditEventColor(option.value)}
+                    className={`w-8 h-8 rounded-full border-2 transition-all ${
+                      editEventColor === option.value
+                        ? "border-primary ring-2 ring-primary ring-offset-2 scale-110"
+                        : "border-gray-200 hover:border-gray-300 hover:scale-105"
+                    }`}
+                    style={{
+                      backgroundColor: option.color,
+                    }}
+                    aria-label={option.label}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditEventDialogOpen(false)}
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleEditEvent}
+              disabled={!editEventTitle.trim() || isUpdatingPlan}
+              style={{
+                backgroundColor: "hsl(121, 37%, 27%)",
+                color: "white",
+              }}
+            >
+              {isUpdatingPlan ? "수정 중..." : "수정하기"}
             </Button>
           </DialogFooter>
         </DialogContent>
