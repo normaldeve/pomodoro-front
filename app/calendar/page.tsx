@@ -1,18 +1,17 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addDays, subDays } from "date-fns"
 import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  MapPin,
-  Users,
   Calendar,
   Home,
   Plus,
   CheckCircle2,
+  BookOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CustomScrollbar } from "@/components/ui/custom-scrollbar"
@@ -31,12 +30,8 @@ interface Event {
   title: string
   startTime: string
   endTime: string
-  location: string
   day: number // 주간 뷰 인덱스 (호환성 유지)
   date: Date // 실제 날짜
-  attendees: string[]
-  organizer: string
-  description: string
   color: string
   completed: boolean // 완료 여부
   completedAt: Date | null // 완료 시간
@@ -44,6 +39,7 @@ interface Event {
 
 export default function CalendarPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const isMobile = useIsMobile()
   const [isLoaded, setIsLoaded] = useState(false)
   const [showHeader, setShowHeader] = useState(false)
@@ -131,12 +127,8 @@ export default function CalendarPage() {
       title: newEventTitle,
       startTime: newEventStartTime,
       endTime: newEventEndTime,
-      location: "",
       day: dayIndex >= 0 ? dayIndex + 1 : 1, // 주간 뷰 인덱스 (호환성 유지)
       date: new Date(newEventDate), // 실제 날짜 저장
-      attendees: [],
-      organizer: "",
-      description: "",
       color: newEventColor,
       completed: false, // 기본값: 미완료
       completedAt: null, // 기본값: 완료 시간 없음
@@ -270,8 +262,9 @@ export default function CalendarPage() {
 
   return (
     <div 
-      className="relative min-h-screen w-full overflow-hidden flex justify-center"
+      className="relative w-full flex justify-center"
       style={{
+        ...(isMobile ? { minHeight: '100vh' } : { height: '100vh', overflow: 'hidden' }),
         '--background': '40 100% 95.9%',
         '--foreground': '0 0% 0%',
         '--primary': '121 37% 27%',
@@ -287,10 +280,10 @@ export default function CalendarPage() {
         '--ring': '121 37% 27%',
         backgroundColor: 'hsl(var(--background))',
         color: 'hsl(var(--foreground))',
-      } as React.CSSProperties}
+      } as React.CSSProperties & { [key: string]: any }}
     >
       {/* Header + Main content wrapper */}
-      <div className="relative z-10 flex w-full max-w-2xl flex-col gap-4 p-4">
+      <div className="relative z-10 flex w-full max-w-2xl flex-col gap-4 p-4" style={isMobile ? { paddingBottom: '100px' } : { height: 'calc(100vh - 80px)', paddingBottom: '20px' }}>
         {/* Header */}
         <header
           className="relative flex items-center justify-between gap-4 py-3 text-xs md:text-sm text-black transition-all duration-700 ease-out"
@@ -325,7 +318,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Main Content */}
-        <main className={`relative w-full flex gap-4 ${isMobile ? "flex-col" : ""}`} style={{ height: isMobile ? "auto" : "calc(100vh - 200px)" }}>
+        <main className={`relative w-full flex gap-4 ${isMobile ? "flex-col" : "flex-1 min-h-0"}`}>
         {/* Sidebar */}
         <div
           className={`${isMobile ? "w-full" : "w-64 shrink-0"} bg-black/5 p-4 shadow-xl border border-black/10 rounded-xl opacity-0 ${isLoaded ? "animate-fade-in" : ""} flex flex-col justify-between`}
@@ -452,17 +445,18 @@ export default function CalendarPage() {
 
         {/* Calendar View */}
         <div
-          className={`${isMobile ? "w-full" : "flex-1"} flex flex-col opacity-0 bg-black/5 rounded-xl border border-black/10 shadow-sm ${isLoaded ? "animate-fade-in" : ""}`}
+          className={`${isMobile ? "w-full" : "flex-1"} flex flex-col opacity-0 bg-black/5 border border-black/10 shadow-sm ${isLoaded ? "animate-fade-in" : ""}`}
           style={{ animationDelay: "0.6s", ...(isMobile ? { height: "60vh", minHeight: "60vh" } : {}) }}
         >
           <CustomScrollbar className={`flex-1 overflow-y-auto ${isMobile ? "min-h-0" : "min-h-0"}`}>
             {/* Week Header */}
             <div 
-              className="grid border-b border-black/10"
+              className="grid border-b border-black/10 sticky top-0 z-10"
               style={{
                 gridTemplateColumns: isMobile 
                   ? "60px 1fr" 
-                  : "60px 1fr 1fr 1fr"
+                  : "60px 1fr 1fr 1fr",
+                backgroundColor: "rgba(0, 0, 0, 0.05)",
               }}
             >
               <div className="p-2 text-center text-foreground/40 text-xs"></div>
@@ -483,7 +477,9 @@ export default function CalendarPage() {
                         ? {
                             backgroundColor: "rgba(197, 212, 192, 0.3)",
                           }
-                        : undefined
+                        : {
+                            backgroundColor: "rgba(0, 0, 0, 0.05)",
+                          }
                     }
                   >
                     <div className="flex items-center justify-center gap-2">
@@ -521,7 +517,7 @@ export default function CalendarPage() {
               }}
             >
               {/* Time Labels */}
-              <div className="text-foreground/50">
+              <div className="text-foreground/50 sticky left-0 z-10" style={{ backgroundColor: "rgba(0, 0, 0, 0.05)" }}>
                 {timeSlots.map((time, i) => (
                   <div key={i} className="h-20 pr-2 text-right text-xs">
                     {time === 0 ? "12 AM" : time === 12 ? "12 PM" : time > 12 ? `${time - 12} PM` : `${time} AM`}
@@ -535,6 +531,19 @@ export default function CalendarPage() {
                 const todayStr = format(today, "yyyy-MM-dd")
                 const dayStr = format(visibleDays[dayIndex], "yyyy-MM-dd")
                 const isToday = dayStr === todayStr
+                const selectedDateStr = format(selectedDate, "yyyy-MM-dd")
+                const isSelectedToday = selectedDateStr === todayStr && isToday
+                
+                // 현재 시간 계산 (선택된 날짜가 오늘인 경우에만)
+                let currentTime: number | null = null
+                let currentTimeLabel: string = ""
+                if (isSelectedToday) {
+                  const now = new Date()
+                  const hours = now.getHours()
+                  const minutes = now.getMinutes()
+                  currentTime = hours + minutes / 60
+                  currentTimeLabel = format(now, "HH:mm")
+                }
                 
                 return (
                 <div 
@@ -553,6 +562,43 @@ export default function CalendarPage() {
                   {timeSlots.map((_, timeIndex) => (
                     <div key={timeIndex} className="h-20 border-b border-black/5"></div>
                   ))}
+
+                  {/* Current Time Indicator - 선택된 날짜가 오늘인 경우에만 표시 */}
+                  {isSelectedToday && currentTime !== null && (
+                    <>
+                      {/* 시간 라벨 (왼쪽, 빨간 줄 위에 배치) */}
+                      <div
+                        className="absolute left-0 z-20 flex items-center"
+                        style={{
+                          top: `${currentTime * 80}px`,
+                          transform: "translateY(-100%)",
+                          marginTop: "-2px",
+                        }}
+                      >
+                        <div
+                          className="text-xs font-medium px-1"
+                          style={{
+                            color: "white",
+                            backgroundColor: "#ef4444",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          {currentTimeLabel}
+                        </div>
+                      </div>
+                      {/* 빨간 수평선 */}
+                      <div
+                        className="absolute left-0 right-0 z-20"
+                        style={{
+                          top: `${currentTime * 80}px`,
+                          transform: "translateY(-50%)",
+                          height: "2px",
+                          backgroundColor: "#ef4444",
+                          pointerEvents: "none",
+                        }}
+                      />
+                    </>
+                  )}
 
                   {/* Events */}
                   {events
@@ -647,10 +693,28 @@ export default function CalendarPage() {
               <div className="h-5 w-5"></div>
               <div className="h-[10px] w-0"></div>
             </div>
-            <div className="flex flex-col items-center justify-center gap-1 px-3 py-2">
-              <div className="h-5 w-5"></div>
-              <div className="h-[10px] w-0"></div>
-            </div>
+            
+            {/* 캘린더 탭 */}
+            <button
+              type="button"
+              onClick={() => router.push("/calendar")}
+              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                pathname === "/calendar"
+                  ? "text-primary bg-primary/10"
+                  : "text-black/60 hover:text-black/80"
+              }`}
+              style={
+                pathname === "/calendar"
+                  ? {
+                      color: 'hsl(121, 37%, 27%)',
+                      backgroundColor: 'rgba(44, 95, 45, 0.1)',
+                    }
+                  : undefined
+              }
+            >
+              <Calendar className="h-5 w-5" />
+              <span className="text-[10px] font-medium">캘린더</span>
+            </button>
             
             {/* 홈 버튼 - 녹색 원 안에 (정중앙) */}
             <div className="flex items-center justify-center">
@@ -667,11 +731,29 @@ export default function CalendarPage() {
               </button>
             </div>
             
+            {/* 회고 탭 */}
+            <button
+              type="button"
+              onClick={() => router.push("/reflection")}
+              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                pathname === "/reflection"
+                  ? "text-primary bg-primary/10"
+                  : "text-black/60 hover:text-black/80"
+              }`}
+              style={
+                pathname === "/reflection"
+                  ? {
+                      color: 'hsl(121, 37%, 27%)',
+                      backgroundColor: 'rgba(44, 95, 45, 0.1)',
+                    }
+                  : undefined
+              }
+            >
+              <BookOpen className="h-5 w-5" />
+              <span className="text-[10px] font-medium">회고</span>
+            </button>
+            
             {/* 빈 공간 - 높이 맞추기용 */}
-            <div className="flex flex-col items-center justify-center gap-1 px-3 py-2">
-              <div className="h-5 w-5"></div>
-              <div className="h-[10px] w-0"></div>
-            </div>
             <div className="flex flex-col items-center justify-center gap-1 px-3 py-2">
               <div className="h-5 w-5"></div>
               <div className="h-[10px] w-0"></div>

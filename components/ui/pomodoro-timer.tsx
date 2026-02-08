@@ -594,7 +594,7 @@ export function PomodoroTimer({
         <div className="flex gap-4">
           <button
             onClick={toggleTimer}
-            className="px-6 py-2.5 rounded-full font-sans font-medium text-base transition-all duration-300 hover-lift"
+            className="px-6 py-2.5 rounded-full font-sans font-medium text-base transition-all duration-300 hover-lift cursor-pointer"
             style={{
               background: isRunning ? colors.buttonBgLight : colors.buttonBg,
               color: isRunning ? colors.text : "white",
@@ -607,7 +607,7 @@ export function PomodoroTimer({
           </button>
           <button
             onClick={resetTimer}
-            className="px-6 py-2.5 rounded-full font-sans font-medium text-base transition-all duration-300 hover-lift"
+            className="px-6 py-2.5 rounded-full font-sans font-medium text-base transition-all duration-300 hover-lift cursor-pointer"
             style={{
               background: "rgba(255, 255, 255, 0.2)",
               color: colors.text,
@@ -672,7 +672,7 @@ export function PomodoroTimer({
                 onResume?.()
               }
             }}
-            className="px-6 py-2.5 rounded-full font-sans font-medium text-base transition-all duration-300 hover-lift flex items-center justify-center"
+            className="px-6 py-2.5 rounded-full font-sans font-medium text-base transition-all duration-300 hover-lift flex items-center justify-center cursor-pointer"
             style={{
               background: effectiveTimerState.running ? colors.buttonBgLight : colors.buttonBg,
               color: effectiveTimerState.running ? colors.text : "white",

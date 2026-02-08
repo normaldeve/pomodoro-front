@@ -70,6 +70,8 @@ export const API_ENDPOINTS = {
   UPLOAD_REFLECTION_IMAGE: `${API_BASE_URL}/api/reflections/image`,
   // 회고 조회
   GET_ROOM_REFLECTIONS: `${API_BASE_URL}/api/reflections`,
+  // 내 회고 조회
+  GET_MY_REFLECTIONS: `${API_BASE_URL}/api/reflections/my`,
   // 사용자 공부 통계 (히트맵)
   GET_MY_STUDY_STATS: `${API_BASE_URL}/api/stats/me`,
 } as const
@@ -952,6 +954,60 @@ export interface ReflectionResponse {
  */
 export async function getRoomReflections(roomId: number): Promise<ReflectionResponse[]> {
   return apiRequest<ReflectionResponse[]>(`${API_ENDPOINTS.GET_ROOM_REFLECTIONS}/${roomId}`, {
+    method: 'GET',
+  })
+}
+
+/**
+ * 내 회고 조회 API 응답 타입
+ */
+export interface ReflectionQueryResponse {
+  reflectionId: number
+  sessionId: number
+  content: string
+  focusScore: number | null
+  imageUrl: string | null
+  createdAt: string // ISO 8601 형식의 날짜 문자열
+  user: {
+    userId: number
+    nickname: string
+    profileUrl: string | null
+    createdAt: string
+  }
+  room: {
+    roomId: number
+    roomName: string
+  }
+}
+
+/**
+ * 내 회고 조회 API
+ * @param date 특정 날짜 (YYYY-MM-DD 형식, optional)
+ * @param year 연도 (optional)
+ * @param month 월 (1-12, optional)
+ */
+export async function getMyReflections(
+  date?: string,
+  year?: number,
+  month?: number
+): Promise<ReflectionQueryResponse[]> {
+  const params = new URLSearchParams()
+  if (date) {
+    params.append('date', date)
+  }
+  if (year !== undefined) {
+    params.append('year', year.toString())
+  }
+  if (month !== undefined) {
+    params.append('month', month.toString())
+  }
+
+  const queryString = params.toString()
+  const url = queryString
+    ? `${API_ENDPOINTS.GET_MY_REFLECTIONS}?${queryString}`
+    : API_ENDPOINTS.GET_MY_REFLECTIONS
+
+  return apiRequest<ReflectionQueryResponse[]>(url, {
     method: 'GET',
   })
 }

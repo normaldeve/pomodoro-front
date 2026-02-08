@@ -910,9 +910,12 @@ function MemberRoomPageInner() {
             <button
               type="button"
               onClick={() => setIsFloatingMenuOpen((prev) => !prev)}
-              className={`relative flex items-center justify-center w-12 h-12 rounded-full bg-[#f59e0b] text-white shadow-lg shadow-[#f59e0b]/40 border-2 border-white/70 hover:bg-[#f59e0b]/90 transition-all z-10 cursor-pointer ${
+              className={`relative flex items-center justify-center w-12 h-12 rounded-full text-white shadow-lg shadow-primary/40 border-2 border-white/70 hover:bg-primary/90 transition-all z-10 cursor-pointer ${
                 isFloatingMenuOpen ? 'rotate-90' : ''
               }`}
+              style={{
+                backgroundColor: 'hsl(121, 37%, 27%)',
+              }}
               aria-label="메뉴"
             >
               {isFloatingMenuOpen ? (
