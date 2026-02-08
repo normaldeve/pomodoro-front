@@ -20,6 +20,8 @@ const FlipTimerStatic = dynamic(() => import("@/components/ui/flip-timer-static"
   ssr: false,
 })
 import { DoorOpen, Plus, Search, User, Lock, X, Trophy, HelpCircle, Clock, ChevronLeft, ChevronRight, Home, Settings, Timer, FlipHorizontal, Coffee, Zap, Calendar } from "lucide-react"
+import { BottomTabBar } from "@/components/ui/bottom-tab-bar"
+import { BannerCarousel } from "@/components/ui/banner-carousel"
 const CustomScrollbar = dynamic(() => import("@/components/ui/custom-scrollbar").then((mod) => mod.CustomScrollbar), { ssr: false })
 import {
   Dialog,
@@ -38,10 +40,6 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { useIsMobile } from "@/hooks/use-mobile"
 
 // 큰 컴포넌트들을 동적 import로 지연 로딩하여 초기 번들 크기 감소
-const LoginModal = dynamic(() => import("@/components/login-modal").then((mod) => mod.LoginModal), {
-  ssr: false,
-})
-
 const UserInfoDialog = dynamic(() => import("@/components/ui/user-info-dialog").then((mod) => mod.UserInfoDialog), {
   ssr: false,
 })
@@ -131,12 +129,10 @@ function HomePageInner() {
   const isMobile = useIsMobile()
   const [isLoggedIn, setIsLoggedIn] = useState(false) // 로그인 상태 관리
   const [user, setUser] = useState<{ id: number; username: string; nickname: string; profileUrl: string | null; role: string } | null>(null) // 사용자 정보
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false) // 로그인 모달 상태
   const [isUserInfoDialogOpen, setIsUserInfoDialogOpen] = useState(false) // 내 정보 다이얼로그 상태
   const [isLoaded, setIsLoaded] = useState(false)
   const [showHeader, setShowHeader] = useState(false)
   const [showRooms, setShowRooms] = useState(false)
-  const [currentBannerIndex, setCurrentBannerIndex] = useState(0)
   const [currentPage, setCurrentPage] = useState(0) // 현재 페이지 (0부터 시작)
   const [studyRooms, setStudyRooms] = useState<StudyRoom[]>([]) // 스터디룸 목록
   const [totalPages, setTotalPages] = useState(0) // 전체 페이지 수
@@ -149,21 +145,6 @@ function HomePageInner() {
   const [isEnterDialogOpen, setIsEnterDialogOpen] = useState(false) // 입장 다이얼로그 상태
   const [isLoginRequiredDialogOpen, setIsLoginRequiredDialogOpen] = useState(false) // 로그인 필요 다이얼로그 상태
   const [isUserStudyDialogOpen, setIsUserStudyDialogOpen] = useState(false) // 공부 기록 다이얼로그 상태
-  // 배너 목록
-  const desktopBanners = [
-    { src: "/banners/banner_main.png", alt: "배너 1" },
-    { src: "/banners/banner_new_year.png", alt: "배너 2" },
-    { src: "/banners/banner_focus.png", alt: "배너 3" },
-  ]
-
-  const mobileBanners = [
-    { src: "/banners/mobile/1.png", alt: "모바일 배너 1" },
-    { src: "/banners/mobile/2.png", alt: "모바일 배너 2" },
-    { src: "/banners/mobile/3.png", alt: "모바일 배너 3" },
-  ]
-
-  const banners = isMobile ? mobileBanners : desktopBanners
-  const totalBanners = banners.length
   
   // 방 생성 폼 상태
   const [roomName, setRoomName] = useState("")
@@ -391,23 +372,6 @@ function HomePageInner() {
     setTimeout(() => setShowRooms(true), 300)
   }, [])
 
-  // 배너 자동 전환 (5초마다)
-  useEffect(() => {
-    if (totalBanners <= 1) return
-
-    const interval = setInterval(() => {
-      setCurrentBannerIndex((prev) => (prev + 1) % totalBanners)
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }, [totalBanners])
-
-  // 배너 개수가 변경되었을 때 인덱스 보정
-  useEffect(() => {
-    if (currentBannerIndex >= totalBanners) {
-      setCurrentBannerIndex(0)
-    }
-  }, [currentBannerIndex, totalBanners])
 
   return (
     <div
@@ -451,7 +415,7 @@ function HomePageInner() {
           <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
             {!isLoggedIn && (
               <button
-                onClick={() => setIsLoginModalOpen(true)}
+                onClick={() => router.push("/login")}
                 className="px-5 py-2.5 rounded-lg bg-[#2c5f2d] text-xs md:text-sm font-bold text-white shadow-md hover:bg-[#2c5f2d]/90 transition-colors"
               >
                 뽀개더 시작하기
@@ -464,46 +428,8 @@ function HomePageInner() {
         <main className="flex w-full">
           {/* Hero + room list */}
           <section className="flex-1 flex flex-col gap-6">
-            {/* 배너 캐러셀 (배너 원본 비율 1080x360 = 3:1 에 맞춘 높이) */}
-            <div
-              className={`relative w-full overflow-hidden rounded-3xl ${
-                isMobile ? "h-[120px]" : "h-[190px]"
-              }`}
-            >
-              <div
-                className="flex transition-transform duration-500 ease-in-out h-full"
-                style={{
-                  transform: `translateX(-${currentBannerIndex * 100}%)`,
-                }}
-              >
-                {banners.map((banner, index) => (
-                  <div key={index} className="w-full h-full flex-shrink-0">
-                    <Image
-                      src={banner.src}
-                      alt={banner.alt}
-                      width={1080}
-                      height={360}
-                      className={isMobile ? "w-full h-full object-cover" : "w-full h-full object-contain"}
-                      priority={index === 0}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* 배너 인디케이터 */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                {banners.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentBannerIndex(index)}
-                    className={`h-2 rounded-full transition-all ${
-                      currentBannerIndex === index ? "bg-black w-6" : "bg-black/30 w-2"
-                    }`}
-                    aria-label={`${index + 1}번째 배너`}
-                  />
-                ))}
-              </div>
-            </div>
+            {/* 배너 캐러셀 */}
+            <BannerCarousel />
 
             {/* 상시 운영 방 섹션 - 지금 함께해요! */}
             <section
@@ -1124,7 +1050,7 @@ function HomePageInner() {
                 className="flex-1 bg-primary hover:bg-primary/90"
                 onClick={() => {
                   setIsLoginRequiredDialogOpen(false)
-                  setIsLoginModalOpen(true)
+                  router.push("/login")
                 }}
               >
                 로그인하기
@@ -1565,114 +1491,11 @@ function HomePageInner() {
       </Dialog>
 
       {/* 하단 탭 바 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
-        <div className="w-full max-w-2xl rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border border-white/60 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]">
-          <div className="grid grid-cols-5 items-center px-2 py-2">
-            {/* 홈 */}
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                pathname === "/"
-                  ? "text-primary bg-primary/10"
-                  : "text-black/60 hover:text-black/80"
-              }`}
-            >
-              <Home className="h-5 w-5" />
-              <span className="text-[10px] font-medium">홈</span>
-            </button>
-
-            {/* 캘린더 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (isLoggedIn) {
-                  router.push("/calendar")
-                } else {
-                  setIsLoginModalOpen(true)
-                }
-              }}
-              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                pathname === "/calendar"
-                  ? "text-primary bg-primary/10"
-                  : "text-black/60 hover:text-black/80"
-              }`}
-            >
-              <Calendar className="h-5 w-5" />
-              <span className="text-[10px] font-medium">캘린더</span>
-            </button>
-
-            {/* 방 만들기 - 유튜브 스타일 + 버튼 (정중앙) */}
-            <div className="flex items-center justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  if (isLoggedIn) {
-                    setIsCreateRoomDialogOpen(true)
-                  } else {
-                    setIsLoginModalOpen(true)
-                  }
-                }}
-                className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-white shadow-lg shadow-primary/40 border border-white/70 hover:bg-primary/90 transition-colors -mt-6 cursor-pointer"
-                aria-label="새 공부방 만들기"
-              >
-                <Plus className="h-6 w-6" />
-              </button>
-            </div>
-
-            {/* 공부 기록 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (isLoggedIn) {
-                  setIsUserStudyDialogOpen(true)
-                } else {
-                  setIsLoginModalOpen(true)
-                }
-              }}
-              className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-black/60 hover:text-black/80 cursor-pointer"
-            >
-              <Clock className="h-5 w-5" />
-              <span className="text-[10px] font-medium">공부 기록</span>
-            </button>
-
-            {/* 설정 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (isLoggedIn) {
-                  setIsUserInfoDialogOpen(true)
-                } else {
-                  setIsLoginModalOpen(true)
-                }
-              }}
-              className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-black/60 hover:text-black/80 cursor-pointer"
-            >
-              <Settings className="h-5 w-5" />
-              <span className="text-[10px] font-medium">설정</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 로그인 모달 */}
-      <LoginModal
-        open={isLoginModalOpen}
-        onOpenChange={setIsLoginModalOpen}
-        onLoginSuccess={async () => {
-          setIsLoggedIn(true)
-          try {
-            const me = await getCurrentUser()
-            setUser(me)
-          } catch (error) {
-            console.error("Failed to load current user after login:", error)
-          }
-          // 로그인 성공 후 roomId가 있으면 해당 방으로 이동
-          const roomIdParam = searchParams.get("roomId")
-          if (roomIdParam) {
-            router.push(`/room?roomId=${roomIdParam}`)
-          }
-        }}
+      <BottomTabBar
+        isLoggedIn={isLoggedIn}
+        onCreateRoomClick={() => setIsCreateRoomDialogOpen(true)}
+        onUserStudyClick={() => setIsUserStudyDialogOpen(true)}
+        onUserInfoClick={() => setIsUserInfoDialogOpen(true)}
       />
 
       {/* 내 정보 다이얼로그 */}
