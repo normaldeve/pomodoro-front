@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { signup, login, ApiError, getCurrentUser } from "@/lib/api"
 import { showSuccessNotification, showErrorNotification } from "@/lib/system-notification"
 import dynamic from "next/dynamic"
-import { BottomTabBar } from "@/components/ui/bottom-tab-bar"
 
 const UserInfoDialog = dynamic(() => import("@/components/ui/user-info-dialog").then((mod) => mod.UserInfoDialog), {
   ssr: false,
@@ -252,17 +251,6 @@ function LoginPageInner() {
             </span>
           </button>
 
-          {/* Right: 로그인 버튼 (로그인하지 않은 경우만 표시) */}
-          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-            {!isLoggedIn && (
-              <button
-                onClick={() => router.push("/")}
-                className="px-5 py-2.5 rounded-lg bg-[#2c5f2d] text-xs md:text-sm font-bold text-white shadow-md hover:bg-[#2c5f2d]/90 transition-colors"
-              >
-                뽀개더 시작하기
-              </button>
-            )}
-          </div>
         </header>
 
         {/* Main content - 로그인 폼 */}
@@ -488,13 +476,6 @@ function LoginPageInner() {
           </div>
         </main>
       </div>
-
-      {/* 하단 탭 바 */}
-      <BottomTabBar
-        isLoggedIn={isLoggedIn}
-        onUserStudyClick={() => setIsUserStudyDialogOpen(true)}
-        onUserInfoClick={() => setIsUserInfoDialogOpen(true)}
-      />
 
       {/* 내 정보 다이얼로그 */}
       <UserInfoDialog
