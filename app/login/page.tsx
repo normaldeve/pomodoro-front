@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -26,7 +26,7 @@ const colors = {
   shadow: "rgba(45, 74, 62, 0.35)",
 }
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isSignUp, setIsSignUp] = useState(false)
@@ -508,5 +508,13 @@ export default function LoginPage() {
         onOpenChange={setIsUserStudyDialogOpen}
       />
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   )
 }
