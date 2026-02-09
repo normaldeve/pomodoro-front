@@ -26,7 +26,7 @@ import { useStudyRoomWebSocket } from "@/hooks/use-study-room-websocket"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound-notification"
-import { Volume2, VolumeX, MessageSquare, Clock, BookOpen, Users, MoreVertical, X, Plus, ChevronLeft, ChevronRight, Trash2, CheckCircle2 } from "lucide-react"
+import { Volume2, VolumeX, MessageSquare, Clock, BookOpen, Users, X, Plus, ChevronLeft, ChevronRight, Trash2, CheckCircle2 } from "lucide-react"
 import { format, addDays, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns"
 import { CustomScrollbar } from "@/components/ui/custom-scrollbar"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -55,7 +55,6 @@ function HostRoomPageInner() {
   const [activeTab, setActiveTab] = useState<"timer" | "reflection">("timer")
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false)
-  const [isFloatingMenuOpen, setIsFloatingMenuOpen] = useState(false)
   const [hasNewChat, setHasNewChat] = useState(false)
   const [hasNewParticipantsEvent, setHasNewParticipantsEvent] = useState(false)
   const [transferTargetUserId, setTransferTargetUserId] = useState<number | null>(null)
@@ -108,7 +107,7 @@ function HostRoomPageInner() {
   const [editEventId, setEditEventId] = useState<number | undefined>(undefined)
   
   const [roomInfo, setRoomInfo] = useState<{
-    roomId: number
+    roomId: string
     title: string
     hashtags: string[]
     focusMinutes: number
@@ -664,12 +663,12 @@ function HostRoomPageInner() {
       if (navigateRoomId) {
         sessionStorage.removeItem("navigateToSessionSummaryRoomId")
         isNavigatingToSummary.current = true
-        const parsedRoomId = parseInt(navigateRoomId, 10)
-        if (!isNaN(parsedRoomId)) {
+        // UUID는 문자열로 처리
+        if (navigateRoomId) {
           // 세션 요약 페이지 접근 허용용 랜덤 토큰 생성 및 저장
           const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`
           sessionStorage.setItem("sessionSummaryToken", token)
-          router.replace(`/session-summary?roomId=${parsedRoomId}&token=${encodeURIComponent(token)}`)
+          router.replace(`/session-summary?roomId=${navigateRoomId}&token=${encodeURIComponent(token)}`)
           return
         }
       }
@@ -678,12 +677,7 @@ function HostRoomPageInner() {
       const roomIdParam = searchParams.get("roomId")
       if (roomIdParam) {
         try {
-          const roomId = parseInt(roomIdParam, 10)
-          if (isNaN(roomId)) {
-            console.error("유효하지 않은 roomId:", roomIdParam)
-            router.replace("/")
-            return
-          }
+          const roomId = roomIdParam // UUID는 문자열로 처리
           
           // API로 방 정보 조회
           try {
@@ -1073,63 +1067,79 @@ function HostRoomPageInner() {
                 }}
               />
             )}
-            <div className="pointer-events-none fixed inset-x-0 bottom-20 md:bottom-24 z-40 flex justify-center">
-              <div className="w-full max-w-2xl px-4 flex flex-col items-end gap-3">
+            <div className="pointer-events-none absolute bottom-20 right-4 z-40 flex flex-col items-end gap-3">
               {/* 채팅 패널 */}
               <div
-                className={`transition-all duration-300 overflow-hidden w-full flex justify-end ${
+                className={`transition-all duration-300 overflow-hidden flex justify-end ${
                   isChatOpen ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
                 }`}
               >
                 <div
-                  className="pointer-events-auto rounded-3xl bg-[#fff8ea] backdrop-blur-3xl border-2 border-[#2c5f2d] overflow-hidden min-h-[420px] max-h-[calc(100vh-140px)] flex flex-col w-full max-w-xs md:max-w-sm"
+                  className="pointer-events-auto rounded-3xl bg-[#fff8ea] backdrop-blur-3xl border-2 border-[#2c5f2d] overflow-hidden min-h-[420px] max-h-[calc(100vh-140px)] flex flex-col w-[448px] md:w-[512px] relative"
                   onClick={(e) => e.stopPropagation()}
                 >
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <LiquidChat
-                    messages={liquidChatMessages}
-                    currentUserName={currentUser?.nickname || participants[0]?.nickname || "사용자"}
-                    onSend={(message: string) => {
-                      if (currentUser?.id) {
-                        sendChatMessage(message, currentUser.id)
+                  {/* X 버튼 */}
+                  <button
+                    type="button"
+                    onClick={() => setIsChatOpen(false)}
+                    className="absolute top-3 right-3 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm border border-[#2c5f2d]/30 hover:bg-white transition-all cursor-pointer"
+                    aria-label="채팅 닫기"
+                  >
+                    <X className="w-4 h-4 text-[#2c5f2d]" />
+                  </button>
+                  <div className="flex-1 min-h-0 overflow-hidden">
+                    <LiquidChat
+                      messages={liquidChatMessages}
+                      currentUserName={currentUser?.nickname || participants[0]?.nickname || "사용자"}
+                      onSend={(message: string) => {
+                        if (currentUser?.id) {
+                          sendChatMessage(message, currentUser.id)
+                        }
+                      }}
+                      onLoadMore={handleLoadMore}
+                      hasMore={hasMoreMessages}
+                      isLoadingMore={isLoadingMessages}
+                      isInitialLoadComplete={isInitialLoadComplete}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 참여자 패널 */}
+              <div
+                className={`transition-all duration-300 overflow-hidden flex justify-end ${
+                  isParticipantsOpen ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <div 
+                  className="pointer-events-auto rounded-3xl bg-[#fff8ea] backdrop-blur-3xl border-2 border-[#2c5f2d] overflow-hidden min-h-[420px] max-h-[calc(100vh-140px)] flex flex-col w-[448px] md:w-[512px] relative"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* X 버튼 */}
+                  <button
+                    type="button"
+                    onClick={() => setIsParticipantsOpen(false)}
+                    className="absolute top-3 right-3 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm border border-[#2c5f2d]/30 hover:bg-white transition-all cursor-pointer"
+                    aria-label="참여자 목록 닫기"
+                  >
+                    <X className="w-4 h-4 text-[#2c5f2d]" />
+                  </button>
+                  <ParticipantsList 
+                    participants={participants} 
+                    isLoading={isLoadingParticipants}
+                    isHost={true}
+                    onTransferHost={(userId) => {
+                      const targetParticipant = participants.find(p => p.userId === userId)
+                      if (targetParticipant) {
+                        setTransferTargetUserId(userId)
+                        setTransferTargetNickname(targetParticipant.nickname)
+                        setIsTransferHostDialogOpen(true)
                       }
                     }}
-                    onLoadMore={handleLoadMore}
-                    hasMore={hasMoreMessages}
-                    isLoadingMore={isLoadingMessages}
-                    isInitialLoadComplete={isInitialLoadComplete}
                   />
                 </div>
               </div>
             </div>
-
-            {/* 참여자 패널 */}
-            <div
-              className={`transition-all duration-300 overflow-hidden w-full flex justify-end ${
-                isParticipantsOpen ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
-              }`}
-            >
-              <div 
-                className="pointer-events-auto rounded-3xl bg-[#fff8ea] backdrop-blur-3xl border-2 border-[#2c5f2d] overflow-hidden h-[340px] w-full max-w-xs md:max-w-sm"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ParticipantsList 
-                  participants={participants} 
-                  isLoading={isLoadingParticipants}
-                  isHost={true}
-                  onTransferHost={(userId) => {
-                    const targetParticipant = participants.find(p => p.userId === userId)
-                    if (targetParticipant) {
-                      setTransferTargetUserId(userId)
-                      setTransferTargetNickname(targetParticipant.nickname)
-                      setIsTransferHostDialogOpen(true)
-                    }
-                  }}
-                />
-              </div>
-            </div>
-            </div>
-          </div>
           </>
         )}
 
@@ -1139,7 +1149,44 @@ function HostRoomPageInner() {
           {activeTab === "timer" && (
             <>
               {/* 타이머 카드 */}
-              <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border-2 border-[#2c5f2d] shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-6 md:px-8 md:py-6 flex flex-col items-center justify-center gap-4 overflow-hidden w-full min-h-[500px] md:min-h-[540px]">
+              <div className="rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border-2 border-[#2c5f2d] shadow-[0_24px_80px_rgba(0,0,0,0.16)] px-6 py-6 md:px-8 md:py-6 flex flex-col items-center justify-center gap-4 overflow-hidden w-full min-h-[500px] md:min-h-[540px] relative">
+                {/* 채팅/참여자 버튼 - 타이머 오른쪽 상단 */}
+                <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChatOpen((prev) => !prev)
+                      setIsParticipantsOpen(false)
+                      if (!isChatOpen) {
+                        setHasNewChat(false)
+                      }
+                    }}
+                    className="relative flex items-center justify-center w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm border-2 border-[#2c5f2d] shadow-lg hover:bg-white transition-all cursor-pointer"
+                    aria-label="채팅"
+                  >
+                    <MessageSquare className="w-5 h-5 text-[#2c5f2d]" />
+                    {hasNewChat && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 shadow-sm border-2 border-white" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsParticipantsOpen((prev) => !prev)
+                      setIsChatOpen(false)
+                      if (!isParticipantsOpen) {
+                        setHasNewParticipantsEvent(false)
+                      }
+                    }}
+                    className="relative flex items-center justify-center w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm border-2 border-[#2c5f2d] shadow-lg hover:bg-white transition-all cursor-pointer"
+                    aria-label="참여자"
+                  >
+                    <Users className="w-5 h-5 text-[#2c5f2d]" />
+                    {hasNewParticipantsEvent && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 shadow-sm border-2 border-white" />
+                    )}
+                  </button>
+                </div>
                 {/* 타이머 영역 - 포모도로/플립 공통 높이 */}
                 <div className="w-full h-[480px] flex items-center justify-center">
                   {roomInfo?.timerType === TimerType.FLIP ? (
@@ -1214,7 +1261,7 @@ function HostRoomPageInner() {
 
               {/* 주간 뷰 카드 - 타이머 종류와 관계없이 동일 위치/높이 */}
               {roomInfo && (
-                <div className="w-full h-[320px] md:h-[360px] rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border-2 border-[#2c5f2d] shadow-[0_24px_80px_rgba(0,0,0,0.16)] overflow-hidden relative">
+                <div className="w-full h-[480px] md:h-[520px] rounded-3xl bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl border-2 border-[#2c5f2d] shadow-[0_24px_80px_rgba(0,0,0,0.16)] overflow-hidden relative">
                   {/* 현재 시간으로 이동 버튼 - + 버튼 위 */}
                   <button
                     type="button"
@@ -1512,77 +1559,6 @@ function HostRoomPageInner() {
             </div>
           </div>
           
-          {/* 플로팅 메뉴 버튼 - 오른쪽 하단 (하단 탭 바 위) */}
-          <div className="absolute -top-16 right-4">
-            {/* 플로팅 메뉴 토글 버튼 - 항상 고정 위치 */}
-            <button
-              type="button"
-              onClick={() => setIsFloatingMenuOpen((prev) => !prev)}
-              className={`relative flex items-center justify-center w-12 h-12 rounded-full text-white shadow-lg shadow-primary/40 border-2 border-white/70 hover:bg-primary/90 transition-all z-10 cursor-pointer ${
-                isFloatingMenuOpen ? 'rotate-90' : ''
-              }`}
-              style={{
-                backgroundColor: 'hsl(121, 37%, 27%)',
-              }}
-              aria-label="메뉴"
-            >
-              {isFloatingMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <MoreVertical className="h-5 w-5" />
-              )}
-              {/* 채팅이나 참여자 목록에 새 데이터가 있을 때 알림 표시 */}
-              {(hasNewChat || hasNewParticipantsEvent) && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 shadow-sm border-2 border-white" />
-              )}
-            </button>
-            
-            {/* 채팅/참여자 버튼들 - 플로팅 메뉴가 열려있을 때만 표시 (플로팅 버튼 위에 배치) */}
-            {isFloatingMenuOpen && (
-              <div className="absolute bottom-0 right-0 flex flex-col items-end gap-2 mb-14">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsChatOpen((prev) => !prev)
-                    setIsParticipantsOpen(false)
-                    if (!isChatOpen) {
-                      setHasNewChat(false)
-                    }
-                    setIsFloatingMenuOpen(false)
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border-2 border-[#2c5f2d] shadow-lg hover:bg-white transition-all whitespace-nowrap cursor-pointer"
-                >
-                  <div className="relative flex items-center gap-1.5">
-                    <MessageSquare className="w-4 h-4 text-[#2c5f2d] flex-shrink-0" />
-                    <span className="text-xs font-medium text-[#2c5f2d] whitespace-nowrap">채팅</span>
-                    {hasNewChat && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
-                    )}
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsParticipantsOpen((prev) => !prev)
-                    setIsChatOpen(false)
-                    if (!isParticipantsOpen) {
-                      setHasNewParticipantsEvent(false)
-                    }
-                    setIsFloatingMenuOpen(false)
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border-2 border-[#2c5f2d] shadow-lg hover:bg-white transition-all whitespace-nowrap cursor-pointer"
-                >
-                  <div className="relative flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-[#2c5f2d] flex-shrink-0" />
-                    <span className="text-xs font-medium text-[#2c5f2d] whitespace-nowrap">참여자</span>
-                    {hasNewParticipantsEvent && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 shadow-sm" />
-                    )}
-                  </div>
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
@@ -2122,14 +2098,15 @@ function HostRoomPageInner() {
                 variant="secondary"
                 className="bg-white text-foreground px-4 py-2 rounded cursor-pointer hover:!bg-white hover:!opacity-100 transition-transform hover:scale-105 active:scale-95"
                 onClick={() => {
-                  if (selectedEvent) {
-                    setEditEventId(selectedEvent.id)
-                    setEditEventTitle(selectedEvent.title)
-                    setEditEventStartTime(selectedEvent.startTime)
-                    setEditEventEndTime(selectedEvent.endTime)
-                    setEditEventColor(selectedEvent.color)
-                    setEditEventDate(selectedEvent.date)
-                    setDialogDisplayMonth(selectedEvent.date)
+                  const event = selectedEvent
+                  if (event) {
+                    setEditEventId(event.id)
+                    setEditEventTitle(event.title)
+                    setEditEventStartTime(event.startTime)
+                    setEditEventEndTime(event.endTime)
+                    setEditEventColor(event.color)
+                    setEditEventDate(event.date)
+                    setDialogDisplayMonth(event.date)
                     setSelectedEvent(null)
                     setIsEditEventDialogOpen(true)
                   }

@@ -15,7 +15,7 @@ export interface GoalsListProps {
   /**
    * 방 ID (필수)
    */
-  roomId: number
+  roomId: string
   /**
    * 방 상태 (FINISHED일 때 목표 작성 비활성화)
    */

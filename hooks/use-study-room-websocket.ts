@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { StudyRoomWebSocket, DialDragMessage, TimerState, TimerStartRequest, MessageResponse, ParticipantMemberInfo, EnterStudyRoomRequest, RoomStatus, RoomStateResponse, ReflectionEvent, ReflectionNotificationEvent, HostTransferredEvent } from '@/lib/websocket'
 import { playNotificationSound } from '@/lib/sound-notification'
 
-export function useStudyRoomWebSocket(roomId: number | null) {
+export function useStudyRoomWebSocket(roomId: string | null) {
   const wsRef = useRef<StudyRoomWebSocket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
@@ -312,7 +312,7 @@ export function useStudyRoomWebSocket(roomId: number | null) {
 
     wsRef.current.sendDialDrag({
       type,
-      roomId,
+      roomId: roomId,
       minutes,
     })
   }, [roomId])

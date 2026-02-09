@@ -48,7 +48,7 @@ export type DialDragType = 'DIAL_DRAG_START' | 'DIAL_DRAG_MOVE' | 'DIAL_DRAG_END
 
 export interface DialDragMessage {
   type: DialDragType
-  roomId: number
+  roomId: string
   minutes: number
   timestamp?: string
 }
@@ -62,7 +62,7 @@ export type TimerPhase = 'FOCUS' | 'BREAK' | 'FINISHED'
  * 타이머 상태 (백엔드에서 1초마다 전송하는 구조)
  */
 export interface TimerState {
-  roomId: number
+  roomId: string
   phase: TimerPhase
   remainingSeconds: number
   phaseDurationSeconds: number
@@ -100,7 +100,7 @@ export interface MessageResponse {
   senderNickname?: string
   senderProfileUrl?: string | null
   timestamp: string
-  roomId?: number
+  roomId?: string
 }
 
 /**
@@ -164,7 +164,7 @@ export interface RoomStateResponse {
  * 회고 다이얼로그 열기 알림 (백엔드에서 회고 작성 요청 시 전송)
  */
 export interface ReflectionNotificationEvent {
-  roomId: number
+  roomId: string
   sessionId: number
 }
 
@@ -188,7 +188,7 @@ export interface ReflectionEvent {
  */
 export class StudyRoomWebSocket {
   private client: Client | null = null
-  private roomId: number | null = null
+  private roomId: string | null = null
   private isConnected: boolean = false
   private reconnectAttempts: number = 0
   private maxReconnectAttempts: number = 5
@@ -216,7 +216,7 @@ export class StudyRoomWebSocket {
    * WebSocket 연결
    */
   connect(
-    roomId: number,
+    roomId: string,
     onMessage: (message: DialDragMessage | TimerState) => void,
     onChatMessage?: (message: MessageResponse) => void,
     onMemberEnter?: (member: ParticipantMemberInfo | null) => void,
@@ -530,13 +530,13 @@ export class StudyRoomWebSocket {
             } 
             // 회고 다이얼로그 열기 알림인지 확인 (roomId, sessionId만 있는 경우)
             else if (
-              typeof rawData.roomId === 'number' &&
+              (typeof rawData.roomId === 'string' || typeof rawData.roomId === 'number') &&
               typeof rawData.sessionId === 'number' &&
               rawData.reflectionId === undefined
             ) {
               // 회고 다이얼로그 열기 알림
               const notification: ReflectionNotificationEvent = {
-                roomId: rawData.roomId,
+                roomId: String(rawData.roomId),
                 sessionId: rawData.sessionId,
               }
               this.onReflectionCallback?.(notification)

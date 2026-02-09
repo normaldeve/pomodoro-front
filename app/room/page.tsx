@@ -22,13 +22,13 @@ function RoomPageInner() {
   const [isLoading, setIsLoading] = useState(true)
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
   const [password, setPassword] = useState("")
-  const [currentRoomId, setCurrentRoomId] = useState<number | null>(null)
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null)
   const isProcessingRef = useRef(false) // 중복 실행 방지 플래그
-  const enteredRoomIdsRef = useRef<Set<number>>(new Set()) // roomId 기준으로 이미 입장한 방 추적
+  const enteredRoomIdsRef = useRef<Set<string>>(new Set()) // roomId 기준으로 이미 입장한 방 추적
 
   // WebSocket을 통한 방 참여 함수
   const enterRoomViaWebSocket = async (
-    roomId: number,
+    roomId: string,
     userId: number,
     password?: string,
     roomUrl?: string
@@ -107,12 +107,7 @@ function RoomPageInner() {
       }
 
       try {
-        const roomId = parseInt(roomIdParam, 10)
-        if (isNaN(roomId)) {
-          console.error("유효하지 않은 roomId:", roomIdParam)
-          router.push("/")
-          return
-        }
+        const roomId = roomIdParam // UUID는 문자열로 처리
 
         // 현재 사용자 정보 가져오기 (토큰 기반)
         const accessToken = localStorage.getItem("accessToken")

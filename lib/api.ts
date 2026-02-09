@@ -581,7 +581,7 @@ export enum RoomStatus {
 }
 
 export interface StudyRoomResponse {
-  roomId: number
+  roomId: string
   title: string
   description: string
   hashtags: string[]
@@ -649,7 +649,7 @@ export enum StudyRoomStatus {
 }
 
 export interface StudyRoomListResponse {
-  roomId: number
+  roomId: string
   title: string
   description: string
   hashtags: string[]
@@ -727,7 +727,7 @@ export async function getPermanentRooms(): Promise<StudyRoomResponse[]> {
 /**
  * 스터디룸 상세 조회 API
  */
-export async function getStudyRoom(roomId: number): Promise<StudyRoomResponse> {
+export async function getStudyRoom(roomId: string): Promise<StudyRoomResponse> {
   return apiRequest<StudyRoomResponse>(`${API_ENDPOINTS.GET_STUDY_ROOM}/${roomId}`, {
     method: 'GET',
   })
@@ -750,7 +750,7 @@ export interface StudyGoalResponse {
  * 목표 생성 API
  */
 export async function createGoal(
-  roomId: number,
+  roomId: string,
   data: CreateStudyGoalRequest
 ): Promise<StudyGoalResponse> {
   return apiRequest<StudyGoalResponse>(`${API_ENDPOINTS.CREATE_GOAL}/${roomId}`, {
@@ -762,7 +762,7 @@ export async function createGoal(
 /**
  * 내 목표 조회 API
  */
-export async function getMyGoals(roomId: number): Promise<StudyGoalResponse[]> {
+export async function getMyGoals(roomId: string): Promise<StudyGoalResponse[]> {
   return apiRequest<StudyGoalResponse[]>(`${API_ENDPOINTS.GET_GOALS}/${roomId}`, {
     method: 'GET',
   })
@@ -802,7 +802,7 @@ export interface StudyRoomMemberResponse {
 }
 
 export interface ParticipateRoomInfo {
-  lastRoomId: number
+  lastRoomId: string
   role: RoomMemberRole
   lastRoomJointAt: string
 }
@@ -810,7 +810,7 @@ export interface ParticipateRoomInfo {
 /**
  * 참여자 목록 조회 API
  */
-export async function getStudyRoomMembers(roomId: number): Promise<StudyRoomMemberResponse[]> {
+export async function getStudyRoomMembers(roomId: string): Promise<StudyRoomMemberResponse[]> {
   return apiRequest<StudyRoomMemberResponse[]>(`${API_ENDPOINTS.GET_STUDY_ROOM_MEMBERS}/${roomId}`, {
     method: 'GET',
   })
@@ -819,7 +819,7 @@ export async function getStudyRoomMembers(roomId: number): Promise<StudyRoomMemb
 /**
  * 방장 권한 위임 API
  */
-export async function transferHost(roomId: number, targetUserId: number): Promise<void> {
+export async function transferHost(roomId: string, targetUserId: number): Promise<void> {
   return apiRequest<void>(`${API_ENDPOINTS.TRANSFER_HOST}/${roomId}/transfer-host`, {
     method: 'POST',
     body: JSON.stringify({ targetUserId }),
@@ -847,7 +847,7 @@ export async function getParticipateRoomInfo(): Promise<ParticipateRoomInfo | nu
  * 오늘 해당 방에서 내가 집중한 총 시간(분)을 조회하는 API
  * 백엔드는 분 단위(Integer)를 반환하므로, 프론트에서는 필요에 따라 변환해서 사용합니다.
  */
-export async function getTodayRoomFocusTime(roomId: number): Promise<number> {
+export async function getTodayRoomFocusTime(roomId: string): Promise<number> {
   return apiRequest<number>(`${API_ENDPOINTS.GET_TODAY_ROOM_FOCUS_TIME}/${roomId}/focus-time/total`, {
     method: 'GET',
   })
@@ -914,7 +914,7 @@ export interface MessageResponse {
   senderNickname?: string
   timestamp?: string  // WebSocket 메시지에서 사용
   createdAt?: string  // API 응답에서 사용
-  roomId?: number
+  roomId?: string
   senderProfileUrl?: string | null
 }
 
@@ -922,7 +922,7 @@ export interface MessageResponse {
  * 메시지 조회 API
  */
 export async function getMessages(
-  roomId: number,
+  roomId: string,
   lastMessageId?: number,
   size: number = 30
 ): Promise<MessageSliceResponse> {
@@ -958,7 +958,7 @@ export interface ReflectionResponse {
 /**
  * 방의 회고 목록 조회 API
  */
-export async function getRoomReflections(roomId: number): Promise<ReflectionResponse[]> {
+export async function getRoomReflections(roomId: string): Promise<ReflectionResponse[]> {
   return apiRequest<ReflectionResponse[]>(`${API_ENDPOINTS.GET_ROOM_REFLECTIONS}/${roomId}`, {
     method: 'GET',
   })
@@ -981,7 +981,7 @@ export interface ReflectionQueryResponse {
     createdAt: string
   }
   room: {
-    roomId: number
+    roomId: string
     roomName: string
   }
 }

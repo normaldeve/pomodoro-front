@@ -63,7 +63,7 @@ function SessionSummaryPageInner() {
   // roomId 및 토큰 가져오기
   const roomIdParam = searchParams?.get("roomId")
   const tokenParam = searchParams?.get("token")
-  const roomId = roomIdParam ? parseInt(roomIdParam, 10) : null
+  const roomId = roomIdParam || null // UUID는 문자열로 처리
 
   // 세션 요약 페이지 접근 제어 (프론트 전용)
   useEffect(() => {
@@ -73,7 +73,7 @@ function SessionSummaryPageInner() {
 
     const isInvalid =
       !roomIdParam ||
-      Number.isNaN(roomId) ||
+      !roomId ||
       !tokenParam ||
       !storedToken ||
       tokenParam !== storedToken

@@ -53,7 +53,7 @@ const UserStudyRecordsDialog = dynamic(
 type RoomStatus = "before_start" | "focus" | "break" | "session_end"
 
 interface StudyRoom {
-  id: number
+  id: string
   name: string
   status: RoomStatus
   participants: number

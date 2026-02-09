@@ -19,7 +19,7 @@ interface Reflection {
   sessionId?: number
   imageUrl?: string | null
   roomName?: string
-  roomId?: number
+  roomId?: string
 }
 
 export default function ReflectionPage() {
