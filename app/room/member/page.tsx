@@ -73,7 +73,7 @@ function MemberRoomPageInner() {
   const [soundEnabled, setSoundEnabledState] = useState(true)
 
   // WebSocket 연결
-  const { statusMessage, timerState, dialMinutes, sendChatMessage, chatMessages, newMember, exitedMemberId, clearExitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData, hostTransferredEvent } = useStudyRoomWebSocket(roomInfo?.roomId || null)
+  const { statusMessage, timerState, dialMinutes, sendChatMessage, chatMessages, newMember, exitedMemberId, clearExitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData, hostTransferredEvent, currentSessionFromStatus, totalSessionsFromStatus } = useStudyRoomWebSocket(roomInfo?.roomId || null)
   const [currentUser, setCurrentUser] = useState<{ id: number; nickname: string } | null>(null)
   const [liquidChatMessages, setLiquidChatMessages] = useState<Array<{
     id: number
@@ -1159,6 +1159,8 @@ function MemberRoomPageInner() {
                         externalMinutes={dialMinutes}
                         roomStatus={roomInfo?.status}
                         isPermanent={roomInfo?.isPermanent || false}
+                        currentSession={currentSessionFromStatus ?? roomInfo?.currentSession ?? 1}
+                        totalSessions={totalSessionsFromStatus ?? roomInfo?.totalSessions ?? 1}
                       />
                     </div>
                   ) : (
@@ -1169,6 +1171,8 @@ function MemberRoomPageInner() {
                         externalMinutes={dialMinutes}
                         roomStatus={roomInfo?.status}
                         isPermanent={roomInfo?.isPermanent || false}
+                        currentSession={currentSessionFromStatus ?? roomInfo?.currentSession ?? 1}
+                        totalSessions={totalSessionsFromStatus ?? roomInfo?.totalSessions ?? 1}
                       />
                     </div>
                   )}

@@ -184,6 +184,15 @@ export interface ReflectionEvent {
 }
 
 /**
+ * 방 상태 + 세션 정보 (roomStatus 토픽에서 받는 형식)
+ */
+export interface RoomInfoMessage {
+  status: RoomStatus
+  currentSession: number
+  totalSessions: number
+}
+
+/**
  * WebSocket 클라이언트 클래스
  */
 export class StudyRoomWebSocket {
@@ -197,7 +206,7 @@ export class StudyRoomWebSocket {
   private onMemberEnterCallback: ((member: ParticipantMemberInfo | null) => void) | null = null
   private onMemberExitCallback: ((userId: number) => void) | null = null
   private onHostTransferredCallback: ((event: HostTransferredEvent) => void) | null = null
-  private onRoomStatusCallback: ((status: RoomStatus) => void) | null = null
+  private onRoomStatusCallback: ((info: RoomInfoMessage) => void) | null = null
   private onFocusTimeChangedCallback: ((focusTime: number) => void) | null = null
   private onRoomStateCallback: ((state: RoomStateResponse) => void) | null = null
   private onFinishSessionCallback: ((status: RoomStatus) => void) | null = null
@@ -224,7 +233,7 @@ export class StudyRoomWebSocket {
     onMemberEnter?: (member: ParticipantMemberInfo | null) => void,
     onMemberExit?: (userId: number) => void,
     onReflection?: (event: ReflectionNotificationEvent) => void,
-    onRoomStatus?: (status: RoomStatus) => void,
+    onRoomStatus?: (info: RoomInfoMessage) => void,
     onFocusTimeChanged?: (focusTime: number) => void,
     onRoomState?: (state: RoomStateResponse) => void,
     onFinishSession?: (status: RoomStatus) => void,
@@ -338,44 +347,82 @@ export class StudyRoomWebSocket {
     // 타이머 관련 구독 (백엔드에서 TimerState 또는 TimerTickMessage를 1초마다 전송)
     if (this.onMessageCallback) {
       this.timerSubscription = this.client.subscribe(
-        `/topic/study-room/${this.roomId}/timer`,
+        // 1초마다 남은 시간을 보내는 tick 엔드포인트
+        `/topic/study-room/${this.roomId}/tick`,
         (message) => {
           try {
             const data = JSON.parse(message.body)
-            // 1) 전체 TimerState 구조인지 확인
-            if (data.phase && data.remainingSeconds !== undefined) {
+            // 1) TimerState 전체 구조인지 확인 (추가 필드 존재 여부로 구분)
+            const hasTimerStateExtraFields =
+              'phaseDurationSeconds' in data ||
+              'currentSession' in data ||
+              'totalSessions' in data ||
+              'running' in data ||
+              'phaseStartTime' in data
+
+            if (data.phase && data.remainingSeconds !== undefined && hasTimerStateExtraFields) {
               // TimerState 전체 상태 업데이트
               this.lastTimerState = data as TimerState
               this.onMessageCallback?.(this.lastTimerState)
             }
-            // 2) TimerTickMessage (roomId + remainingSeconds) 형태인지 확인
+            // 2) TimerTickMessage (roomId + phase + remainingSeconds) 형태
             else if (
               data.remainingSeconds !== undefined &&
+              data.phase &&
               (data.roomId !== undefined || this.roomId !== null)
             ) {
               if (this.lastTimerState) {
-                // 직전에 받은 TimerState를 기반으로 remainingSeconds만 갱신
+                // 직전에 받은 TimerState를 기반으로 phase와 remainingSeconds만 갱신
                 this.lastTimerState = {
                   ...this.lastTimerState,
+                  phase: data.phase as TimerPhase,
                   remainingSeconds: data.remainingSeconds as number,
                 }
                 this.onMessageCallback?.(this.lastTimerState)
               } else {
                 // 아직 전체 TimerState를 받은 적이 없다면 최소한의 정보로 TimerState 생성
+                // currentSession/totalSessions는 아직 알 수 없으므로 0으로 설정
+                // (실제 값은 /status 토픽이나 전체 TimerState에서 동기화됨)
                 this.lastTimerState = {
                   roomId: (data.roomId as string) || (this.roomId as string),
-                  phase: 'FOCUS',
+                  phase: data.phase as TimerPhase,
                   remainingSeconds: data.remainingSeconds as number,
                   phaseDurationSeconds: data.remainingSeconds as number,
-                  currentSession: 1,
-                  totalSessions: 1,
+                  currentSession: 0,
+                  totalSessions: 0,
                   running: true,
                   phaseStartTime: Date.now(),
                 }
                 this.onMessageCallback?.(this.lastTimerState)
               }
             }
-            // 3) 다이얼 드래그 메시지
+            // 3) TimerTickMessage가 remainingSeconds만 포함하는 구버전 형태 (하위 호환)
+            else if (
+              data.remainingSeconds !== undefined &&
+              (data.roomId !== undefined || this.roomId !== null)
+            ) {
+              if (this.lastTimerState) {
+                this.lastTimerState = {
+                  ...this.lastTimerState,
+                  remainingSeconds: data.remainingSeconds as number,
+                }
+                this.onMessageCallback?.(this.lastTimerState)
+              } else {
+                // 구버전 tick 메시지에서도 세션 정보는 알 수 없으므로 0으로 초기화
+                this.lastTimerState = {
+                  roomId: (data.roomId as string) || (this.roomId as string),
+                  phase: 'FOCUS',
+                  remainingSeconds: data.remainingSeconds as number,
+                  phaseDurationSeconds: data.remainingSeconds as number,
+                  currentSession: 0,
+                  totalSessions: 0,
+                  running: true,
+                  phaseStartTime: Date.now(),
+                }
+                this.onMessageCallback?.(this.lastTimerState)
+              }
+            }
+            // 4) 다이얼 드래그 메시지
             else if (data.type && data.type.startsWith('DIAL_DRAG_')) {
               // DialDragMessage 타입으로 처리
               this.onMessageCallback?.(data as DialDragMessage)
@@ -441,29 +488,58 @@ export class StudyRoomWebSocket {
       )
     }
 
-    // 방 상태 구독
+    // 방 상태 + 세션 정보 구독
     if (this.onRoomStatusCallback) {
       this.roomStatusSubscription = this.client.subscribe(
         `/topic/study-room/${this.roomId}/status`,
         (message) => {
           try {
-            let status: RoomStatus
-            
+            let info: RoomInfoMessage | null = null
+
             // JSON으로 전송되는 경우와 문자열로 전송되는 경우 모두 처리
             try {
               const parsed = JSON.parse(message.body)
-              // JSON 객체인 경우 문자열 값 추출
-              status = (typeof parsed === 'string' ? parsed : parsed.toString()) as RoomStatus
+
+              if (parsed && typeof parsed === 'object' && 'status' in parsed) {
+                const status = (parsed.status as string) as RoomStatus
+                const currentSession =
+                  typeof parsed.currentSession === 'number' ? parsed.currentSession : 0
+                const totalSessions =
+                  typeof parsed.totalSessions === 'number' ? parsed.totalSessions : 0
+
+                if (['WAITING', 'FOCUS', 'BREAK', 'FINISHED'].includes(status)) {
+                  info = {
+                    status,
+                    currentSession,
+                    totalSessions,
+                  }
+                } else {
+                  console.warn('유효하지 않은 방 상태:', parsed.status)
+                }
+              } else if (typeof parsed === 'string') {
+                const status = parsed as RoomStatus
+                if (['WAITING', 'FOCUS', 'BREAK', 'FINISHED'].includes(status)) {
+                  info = {
+                    status,
+                    currentSession: this.lastTimerState?.currentSession ?? 0,
+                    totalSessions: this.lastTimerState?.totalSessions ?? 0,
+                  }
+                }
+              }
             } catch {
-              // JSON 파싱 실패 시 문자열로 직접 사용
-              status = message.body as RoomStatus
+              // JSON 파싱 실패 시 문자열로 직접 사용 (구버전 호환)
+              const status = message.body as RoomStatus
+              if (['WAITING', 'FOCUS', 'BREAK', 'FINISHED'].includes(status)) {
+                info = {
+                  status,
+                  currentSession: this.lastTimerState?.currentSession ?? 0,
+                  totalSessions: this.lastTimerState?.totalSessions ?? 0,
+                }
+              }
             }
-            
-            // 유효한 상태인지 확인
-            if (['WAITING', 'FOCUS', 'BREAK', 'FINISHED'].includes(status)) {
-              this.onRoomStatusCallback?.(status)
-            } else {
-              console.warn('유효하지 않은 방 상태:', status)
+
+            if (info) {
+              this.onRoomStatusCallback?.(info)
             }
           } catch (error) {
             console.error('방 상태 파싱 실패:', error)

@@ -128,7 +128,7 @@ function HostRoomPageInner() {
   const [soundEnabled, setSoundEnabledState] = useState(true)
 
   // WebSocket 연결
-  const { sendDialDrag, sendTimerStart, sendTimerPause, sendTimerResume, sendNextFocusMinutes, statusMessage, timerState, sendChatMessage, chatMessages, newMember, exitedMemberId, clearExitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData, hostTransferredEvent } = useStudyRoomWebSocket(roomInfo?.roomId || null)
+  const { sendDialDrag, sendTimerStart, sendTimerPause, sendTimerResume, sendNextFocusMinutes, statusMessage, timerState, sendChatMessage, chatMessages, newMember, exitedMemberId, clearExitedMemberId, sendEnterRoom, sendMemberExit, sendReflection, roomStatus, focusTime, roomState, finishSession, reflectionEvent, reflectionData, removeReflectionData, hostTransferredEvent, currentSessionFromStatus, totalSessionsFromStatus } = useStudyRoomWebSocket(roomInfo?.roomId || null)
   const [currentUser, setCurrentUser] = useState<{ id: number; nickname: string } | null>(null)
   const [liquidChatMessages, setLiquidChatMessages] = useState<Array<{
     id: number
@@ -1194,8 +1194,8 @@ function HostRoomPageInner() {
                       <FlipTimer
                         disabled={false}
                         defaultMinutes={roomInfo?.focusMinutes || 25}
-                        currentSession={1}
-                        totalSessions={roomInfo?.totalSessions || 4}
+                        currentSession={currentSessionFromStatus ?? roomInfo?.currentSession ?? 1}
+                        totalSessions={totalSessionsFromStatus ?? roomInfo?.totalSessions ?? 1}
                         externalTimerState={timerState}
                         roomStatus={roomInfo?.status}
                         isPermanent={roomInfo?.isPermanent || false}
@@ -1227,8 +1227,8 @@ function HostRoomPageInner() {
                       <PomodoroTimer
                         disabled={false}
                         defaultMinutes={roomInfo?.focusMinutes || 25}
-                        currentSession={1}
-                        totalSessions={roomInfo?.totalSessions || 4}
+                        currentSession={currentSessionFromStatus ?? roomInfo?.currentSession ?? 1}
+                        totalSessions={totalSessionsFromStatus ?? roomInfo?.totalSessions ?? 1}
                         externalTimerState={timerState}
                         roomStatus={roomInfo?.status}
                         isPermanent={roomInfo?.isPermanent || false}

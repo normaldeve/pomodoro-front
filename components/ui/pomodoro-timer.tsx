@@ -387,12 +387,16 @@ export function PomodoroTimer({
   
   const handlePoint = getPointOnCircle(getAngleFromMinutes(currentMinutesForDisplay))
   
-  // 세션 정보 (외부 제어 중이면 TimerState에서 가져오기)
+  // 세션 정보 (외부 제어 중이면 TimerState에서 가져오되, 0/undefined면 API에서 받은 props 사용)
   const effectiveCurrentSession = isExternalControl && effectiveTimerState
-    ? effectiveTimerState.currentSession
+    ? (effectiveTimerState.currentSession && effectiveTimerState.currentSession > 0
+        ? effectiveTimerState.currentSession
+        : currentSession)
     : currentSession
   const effectiveTotalSessions = isExternalControl && effectiveTimerState
-    ? effectiveTimerState.totalSessions
+    ? (effectiveTimerState.totalSessions && effectiveTimerState.totalSessions > 0
+        ? effectiveTimerState.totalSessions
+        : totalSessions)
     : totalSessions
   
   // 방 상태가 FINISHED이면 종료 상태로 표시

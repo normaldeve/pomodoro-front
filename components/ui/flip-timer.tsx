@@ -272,12 +272,16 @@ export function FlipTimer({
     ? externalMinutes * 60
     : remainingSeconds
 
-  // 세션 정보
+  // 세션 정보 (외부 제어 중이면 TimerState에서 가져오되, 0/undefined면 API에서 받은 props 사용)
   const effectiveCurrentSession = isExternalControl && effectiveTimerState
-    ? effectiveTimerState.currentSession
+    ? (effectiveTimerState.currentSession && effectiveTimerState.currentSession > 0
+        ? effectiveTimerState.currentSession
+        : currentSession)
     : currentSession
   const effectiveTotalSessions = isExternalControl && effectiveTimerState
-    ? effectiveTimerState.totalSessions
+    ? (effectiveTimerState.totalSessions && effectiveTimerState.totalSessions > 0
+        ? effectiveTimerState.totalSessions
+        : totalSessions)
     : totalSessions
 
   // phase에 따른 타이틀 및 색상

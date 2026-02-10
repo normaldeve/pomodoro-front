@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { StudyRoomWebSocket, DialDragMessage, TimerState, TimerStartRequest, MessageResponse, ParticipantMemberInfo, EnterStudyRoomRequest, RoomStatus, RoomStateResponse, ReflectionEvent, ReflectionNotificationEvent, HostTransferredEvent } from '@/lib/websocket'
+import { StudyRoomWebSocket, DialDragMessage, TimerState, TimerStartRequest, MessageResponse, ParticipantMemberInfo, EnterStudyRoomRequest, RoomStatus, RoomStateResponse, ReflectionEvent, ReflectionNotificationEvent, HostTransferredEvent, RoomInfoMessage } from '@/lib/websocket'
 import { playNotificationSound } from '@/lib/sound-notification'
 
 export function useStudyRoomWebSocket(roomId: string | null) {
@@ -17,6 +17,8 @@ export function useStudyRoomWebSocket(roomId: string | null) {
   const [newMember, setNewMember] = useState<ParticipantMemberInfo | null>(null)
   const [exitedMemberId, setExitedMemberId] = useState<number | null>(null)
   const [roomStatus, setRoomStatus] = useState<RoomStatus | null>(null)
+  const [currentSessionFromStatus, setCurrentSessionFromStatus] = useState<number | null>(null)
+  const [totalSessionsFromStatus, setTotalSessionsFromStatus] = useState<number | null>(null)
   const [focusTime, setFocusTime] = useState<number | null>(null)
   const [roomState, setRoomState] = useState<RoomStateResponse | null>(null)
   const [finishSession, setFinishSession] = useState<RoomStatus | null>(null)
@@ -26,6 +28,8 @@ export function useStudyRoomWebSocket(roomId: string | null) {
   const previousRunningStateRef = useRef<boolean | null>(null)
   const previousPhaseRef = useRef<string | null>(null)
   const isFirstFocusTickRef = useRef<boolean>(false)
+  const currentSessionRef = useRef<number | null>(null)
+  const totalSessionsRef = useRef<number | null>(null)
   
   // 콜백을 ref로 관리하여 최신 함수 참조 보장
   const handleDialDragMessageRef = useRef<(message: DialDragMessage) => void | undefined>(undefined)
@@ -33,7 +37,7 @@ export function useStudyRoomWebSocket(roomId: string | null) {
   const handleChatMessageRef = useRef<(message: MessageResponse) => void | undefined>(undefined)
   const handleMemberEnterRef = useRef<(member: ParticipantMemberInfo | null) => void | undefined>(undefined)
   const handleMemberExitRef = useRef<(userId: number) => void | undefined>(undefined)
-  const handleRoomStatusRef = useRef<(status: RoomStatus) => void | undefined>(undefined)
+  const handleRoomStatusRef = useRef<(info: RoomInfoMessage) => void | undefined>(undefined)
   const handleFocusTimeChangedRef = useRef<(focusTime: number) => void | undefined>(undefined)
   const handleRoomStateRef = useRef<(state: RoomStateResponse) => void | undefined>(undefined)
   const handleFinishSessionRef = useRef<(status: RoomStatus) => void | undefined>(undefined)
@@ -64,34 +68,41 @@ export function useStudyRoomWebSocket(roomId: string | null) {
 
   // 백엔드에서 보내는 TimerState 처리 (1초마다 업데이트)
   const handleTimerState = useCallback((state: TimerState) => {
+    // RoomInfoMessage로부터 받은 세션 정보가 있다면 TimerState에 우선 적용
+    const syncedState: TimerState = {
+      ...state,
+      currentSession: currentSessionRef.current ?? state.currentSession,
+      totalSessions: totalSessionsRef.current ?? state.totalSessions,
+    }
+
     const previousRunning = previousRunningStateRef.current
     const previousPhase = previousPhaseRef.current
     
     // phase가 변경되었는지 확인
-    const phaseChanged = previousPhase !== null && previousPhase !== state.phase
+    const phaseChanged = previousPhase !== null && previousPhase !== syncedState.phase
     
     // FOCUS로 변경된 직후 첫 번째 tick은 재생하지 않음 (Pling-Sound와 겹침 방지)
-    if (phaseChanged && state.phase === 'FOCUS') {
+    if (phaseChanged && syncedState.phase === 'FOCUS') {
       isFirstFocusTickRef.current = true
     }
     
     // 타이머가 실행 중이고 FOCUS 상태일 때만 tick.mov 재생 (소리 설정 확인)
     // 단, FOCUS로 변경된 직후 첫 번째 tick은 재생하지 않음
-    if (state.running && state.phase === 'FOCUS' && !isFirstFocusTickRef.current) {
+    if (syncedState.running && syncedState.phase === 'FOCUS' && !isFirstFocusTickRef.current) {
       playNotificationSound('/sounds/tick.mov', true)
     }
     
     // 첫 번째 tick을 건너뛴 후에는 플래그 초기화
-    if (isFirstFocusTickRef.current && state.phase === 'FOCUS') {
+    if (isFirstFocusTickRef.current && syncedState.phase === 'FOCUS') {
       isFirstFocusTickRef.current = false
     }
     
     // 이전 phase 업데이트
-    previousPhaseRef.current = state.phase
+    previousPhaseRef.current = syncedState.phase
     
     // running 상태 변경 감지 (정지/재개 메시지 표시)
-    if (previousRunning !== null && previousRunning !== state.running) {
-      if (!state.running) {
+    if (previousRunning !== null && previousRunning !== syncedState.running) {
+      if (!syncedState.running) {
         // 정지됨
         setStatusMessage('타이머가 일시정지되었습니다')
       } else {
@@ -107,11 +118,11 @@ export function useStudyRoomWebSocket(roomId: string | null) {
     }
     
     // 이전 running 상태 업데이트
-    previousRunningStateRef.current = state.running
+    previousRunningStateRef.current = syncedState.running
     
-    setTimerState(state)
+    setTimerState(syncedState)
     // 타이머가 시작되면 다이얼 드래그 상태 초기화
-    if (state.running) {
+    if (syncedState.running) {
       setDialMinutes(null)
       setIsHostDragging(false)
     }
@@ -186,9 +197,19 @@ export function useStudyRoomWebSocket(roomId: string | null) {
   const handleHostTransferredRef = useRef<(event: HostTransferredEvent) => void | undefined>(undefined)
   handleHostTransferredRef.current = handleHostTransferred
 
-  // 방 상태 변경 메시지 처리
-  const handleRoomStatus = useCallback((status: RoomStatus) => {
-    setRoomStatus(status)
+  // 방 상태 + 세션 정보 변경 메시지 처리
+  const handleRoomStatus = useCallback((info: RoomInfoMessage) => {
+    setRoomStatus(info.status)
+    // currentSession/totalSessions가 0 이하면 "알 수 없음"으로 간주하고 기존 값을 유지
+    if (typeof info.currentSession === 'number' && info.currentSession > 0) {
+      setCurrentSessionFromStatus(info.currentSession)
+      currentSessionRef.current = info.currentSession
+    }
+    if (typeof info.totalSessions === 'number' && info.totalSessions > 0) {
+      setTotalSessionsFromStatus(info.totalSessions)
+      totalSessionsRef.current = info.totalSessions
+    }
+
     // 웹소켓 status 수신 시 소리 알림 재생
     playNotificationSound()
   }, [])
@@ -263,9 +284,9 @@ export function useStudyRoomWebSocket(roomId: string | null) {
         // ref를 통해 최신 콜백 호출 (회고 다이얼로그 열기 알림)
         handleReflectionEventRef.current?.(event)
       },
-      (status: RoomStatus) => {
+      (info: RoomInfoMessage) => {
         // ref를 통해 최신 콜백 호출
-        handleRoomStatusRef.current?.(status)
+        handleRoomStatusRef.current?.(info)
       },
       (focusTime: number) => {
         // ref를 통해 최신 콜백 호출
@@ -401,6 +422,8 @@ export function useStudyRoomWebSocket(roomId: string | null) {
     sendMemberExit,
     sendReflection,
     roomStatus,
+    currentSessionFromStatus,
+    totalSessionsFromStatus,
     focusTime,
     roomState,
     finishSession,
