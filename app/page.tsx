@@ -634,7 +634,6 @@ function HomePageInner() {
               style={{
                 opacity: showRooms ? 1 : 0,
                 transform: showRooms ? "translateY(0)" : "translateY(20px)",
-                minHeight: "400px",
               }}
             >
               <header className="flex flex-col gap-3 px-2">

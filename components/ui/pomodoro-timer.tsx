@@ -477,9 +477,9 @@ export function PomodoroTimer({
 
   return (
     <div className="flex flex-col items-center gap-4 relative w-full">
-      {/* 오른쪽 상단 톱니바퀴 아이콘 및 토글 메뉴 - 쉬는 시간 중에만 표시 (방장용), 종료 시 숨김 */}
+      {/* 왼쪽 상단 톱니바퀴 아이콘 및 토글 메뉴 - 쉬는 시간 중에만 표시 (방장용), 종료 시 숨김 */}
       {!disabled && isExternalControl && effectiveTimerState && currentPhase === 'BREAK' && !isFinished && !isEditingNextFocus && (
-        <div className="absolute top-0 right-0 flex flex-col items-end gap-2">
+        <div className="absolute top-0 left-0 flex flex-col items-start gap-2">
           <button
             onClick={() => setShowNextFocusButton(!showNextFocusButton)}
             className="p-2 rounded-full transition-all duration-300 hover:bg-opacity-20 flex items-center justify-center"

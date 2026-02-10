@@ -211,6 +211,8 @@ export class StudyRoomWebSocket {
   private roomStateSubscription: any = null
   private finishSessionSubscription: any = null
   private reflectionSubscription: any = null
+  // 마지막으로 수신한 타이머 상태 (TimerTickMessage에서 remainingSeconds만 올 때 사용)
+  private lastTimerState: TimerState | null = null
 
   /**
    * WebSocket 연결
@@ -333,18 +335,48 @@ export class StudyRoomWebSocket {
       this.finishSessionSubscription = null
     }
 
-    // 타이머 관련 구독 (백엔드에서 TimerState를 1초마다 전송)
+    // 타이머 관련 구독 (백엔드에서 TimerState 또는 TimerTickMessage를 1초마다 전송)
     if (this.onMessageCallback) {
       this.timerSubscription = this.client.subscribe(
         `/topic/study-room/${this.roomId}/timer`,
         (message) => {
           try {
             const data = JSON.parse(message.body)
-            // 백엔드에서 보내는 TimerState 구조인지 확인
+            // 1) 전체 TimerState 구조인지 확인
             if (data.phase && data.remainingSeconds !== undefined) {
-              // TimerState 타입으로 처리
-              this.onMessageCallback?.(data as TimerState)
-            } else if (data.type && data.type.startsWith('DIAL_DRAG_')) {
+              // TimerState 전체 상태 업데이트
+              this.lastTimerState = data as TimerState
+              this.onMessageCallback?.(this.lastTimerState)
+            }
+            // 2) TimerTickMessage (roomId + remainingSeconds) 형태인지 확인
+            else if (
+              data.remainingSeconds !== undefined &&
+              (data.roomId !== undefined || this.roomId !== null)
+            ) {
+              if (this.lastTimerState) {
+                // 직전에 받은 TimerState를 기반으로 remainingSeconds만 갱신
+                this.lastTimerState = {
+                  ...this.lastTimerState,
+                  remainingSeconds: data.remainingSeconds as number,
+                }
+                this.onMessageCallback?.(this.lastTimerState)
+              } else {
+                // 아직 전체 TimerState를 받은 적이 없다면 최소한의 정보로 TimerState 생성
+                this.lastTimerState = {
+                  roomId: (data.roomId as string) || (this.roomId as string),
+                  phase: 'FOCUS',
+                  remainingSeconds: data.remainingSeconds as number,
+                  phaseDurationSeconds: data.remainingSeconds as number,
+                  currentSession: 1,
+                  totalSessions: 1,
+                  running: true,
+                  phaseStartTime: Date.now(),
+                }
+                this.onMessageCallback?.(this.lastTimerState)
+              }
+            }
+            // 3) 다이얼 드래그 메시지
+            else if (data.type && data.type.startsWith('DIAL_DRAG_')) {
               // DialDragMessage 타입으로 처리
               this.onMessageCallback?.(data as DialDragMessage)
             }
@@ -782,6 +814,7 @@ export class StudyRoomWebSocket {
     }
     this.isConnected = false
     this.roomId = null
+    this.lastTimerState = null
   }
 
   /**
