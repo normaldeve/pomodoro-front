@@ -395,16 +395,24 @@ export function PomodoroTimer({
     ? effectiveTimerState.totalSessions
     : totalSessions
   
-  // phase에 따른 타이틀 및 색상
-  // 타이머 phase는 FOCUS 또는 BREAK만 가능 (FINISHED는 방 상태로만 판단)
-  const currentPhase = isExternalControl && effectiveTimerState
-    ? effectiveTimerState.phase
-    : 'FOCUS'
-  
   // 방 상태가 FINISHED이면 종료 상태로 표시
   const isFinished = roomStatus === 'FINISHED'
   // 방 상태가 WAITING이면 시작 전 상태
   const isWaiting = roomStatus === 'WAITING'
+  
+  // roomStatus를 기반으로 한 기본 phase (상시 운영 방 등에서 TimerState.phase가 없을 때 사용)
+  const phaseFromStatus =
+    roomStatus === 'BREAK'
+      ? 'BREAK'
+      : roomStatus === 'FINISHED'
+        ? 'FINISHED'
+        : 'FOCUS'
+
+  // phase에 따른 타이틀 및 색상
+  // 외부 TimerState에 phase가 있으면 우선 사용, 없으면 roomStatus 기반 phase 사용
+  const currentPhase = isExternalControl && effectiveTimerState && effectiveTimerState.phase
+    ? effectiveTimerState.phase
+    : phaseFromStatus
   
   // 집중 시간 변경 모드일 때는 집중하기로 표시
   const phaseTitle = isEditingNextFocus 
