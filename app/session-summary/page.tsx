@@ -415,7 +415,7 @@ function SessionSummaryPageInner() {
               같은 세션 동안 공부한 사람들의 회고를 확인해보세요
             </p>
           </div>
-          <div>
+          <div className="h-[28rem]">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-xs font-sans" style={{ color: colors.textLight }}>

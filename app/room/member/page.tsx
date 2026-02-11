@@ -1479,23 +1479,28 @@ function MemberRoomPageInner() {
 
           {/* 회고 탭 */}
           {activeTab === "reflection" && (
-            <div className="w-full h-[calc(100vh-280px)] min-h-[500px]">
-              <Reflection
-                initialReflections={initialReflections}
-                liveReflection={currentLiveReflection}
-                onReflectionProcessed={() => {
-                  if (currentLiveReflection) {
-                    // 처리 완료된 ID 기록
-                    setProcessedReflectionIds((prev) => {
-                      const next = new Set(prev)
-                      next.add(currentLiveReflection.reflectionId)
-                      return next
-                    })
-                    // 처리된 데이터 제거
-                    removeReflectionData(currentLiveReflection.reflectionId)
-                  }
-                }}
-              />
+            <div className="w-full h-[calc(100vh-280px)] min-h-[500px] flex flex-col gap-3">
+              <div className="px-2 pt-2 text-xs text-black/60">
+                같은 방에서 함께 공부하는 사람들의 회고를 한눈에 볼 수 있어요.
+              </div>
+              <div className="flex-1 min-h-0">
+                <Reflection
+                  initialReflections={initialReflections}
+                  liveReflection={currentLiveReflection}
+                  onReflectionProcessed={() => {
+                    if (currentLiveReflection) {
+                      // 처리 완료된 ID 기록
+                      setProcessedReflectionIds((prev) => {
+                        const next = new Set(prev)
+                        next.add(currentLiveReflection.reflectionId)
+                        return next
+                      })
+                      // 처리된 데이터 제거
+                      removeReflectionData(currentLiveReflection.reflectionId)
+                    }
+                  }}
+                />
+              </div>
             </div>
           )}
 
