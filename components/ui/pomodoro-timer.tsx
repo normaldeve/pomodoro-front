@@ -693,11 +693,7 @@ export function PomodoroTimer({
               boxShadow: `0 8px 32px ${colors.shadow}`,
             }}
           >
-            {effectiveTimerState.running ? (
-              <Pause className="h-6 w-6" />
-            ) : (
-              <Play className="h-6 w-6" />
-            )}
+            {effectiveTimerState.running ? "일시 정지" : "다시 시작하기"}
           </button>
         </div>
       )}
