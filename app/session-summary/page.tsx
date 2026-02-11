@@ -4,7 +4,14 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
 import { CheckCircle2, Circle, Clock, Home } from "lucide-react"
 import { Reflection } from "@/components/ui/reflection"
-import { getMyGoals, getRoomReflections, getTodayRoomFocusTime, StudyGoalResponse, ReflectionResponse } from "@/lib/api"
+import {
+  getRoomReflections,
+  getTodayRoomFocusTime,
+  ReflectionResponse,
+  getPlansByDate,
+  PlanResponse,
+  EventColor,
+} from "@/lib/api"
 
 // 초를 시간:분 형식으로 변환하는 함수
 const formatTime = (seconds: number): string => {
@@ -25,8 +32,10 @@ const formatTimeHHMM = (seconds: number): string => {
 
 interface Goal {
   id: number
-  text: string
+  title: string
+  timeRange: string
   completed: boolean
+  colorClass: string
 }
 
 const colors = {
@@ -106,12 +115,36 @@ function SessionSummaryPageInner() {
           setTodayStudyTime(0)
         }
 
-        // 목표 조회
-        const goalsData = await getMyGoals(roomId)
-        const formattedGoals: Goal[] = goalsData.map((goal: StudyGoalResponse) => ({
-          id: goal.id,
-          text: goal.content,
-          completed: goal.isCompleted,
+        // 오늘 날짜 기준 일정(계획) 조회
+        const today = new Date()
+        const year = today.getFullYear()
+        const month = String(today.getMonth() + 1).padStart(2, "0")
+        const day = String(today.getDate()).padStart(2, "0")
+        const todayStr = `${year}-${month}-${day}`
+
+        const plansData = await getPlansByDate(todayStr)
+
+        const mapEventColorToColorClass = (eventColor: EventColor): string => {
+          const colorMap: Record<EventColor, string> = {
+            [EventColor.RED]: "bg-red-500",
+            [EventColor.ORANGE]: "bg-orange-500",
+            [EventColor.YELLOW]: "bg-yellow-500",
+            [EventColor.GREEN]: "bg-green-500",
+            [EventColor.BLUE]: "bg-blue-500",
+            [EventColor.INDIGO]: "bg-indigo-500",
+            [EventColor.PURPLE]: "bg-purple-500",
+            [EventColor.PINK]: "bg-pink-500",
+          }
+          return colorMap[eventColor] || "bg-red-500"
+        }
+
+        const formattedGoals: Goal[] = plansData.map((plan: PlanResponse) => ({
+          id: plan.id,
+          title: plan.title,
+          // 시간은 HH:mm 형식만 사용 (초 제거)
+          timeRange: `${plan.startTime.slice(0, 5)} ~ ${plan.endTime.slice(0, 5)}`,
+          completed: plan.completed,
+          colorClass: mapEventColorToColorClass(plan.color),
         }))
         setGoals(formattedGoals)
 
@@ -241,10 +274,10 @@ function SessionSummaryPageInner() {
         >
           <div className="mb-4">
             <h2 className="text-base font-semibold font-sans" style={{ color: colors.text }}>
-              오늘의 목표
+              오늘의 일정
             </h2>
             <p className="text-xs font-sans mt-1" style={{ color: colors.textLight }}>
-              오늘 완료한 목표, 완료하지 못한 목표를 확인해보세요
+              오늘 완료한 일정과 완료하지 못한 일정을 확인해보세요
             </p>
           </div>
           <div className="rounded-3xl bg-gradient-to-br from-white/80 via-white/65 to-white/45 backdrop-blur-3xl border border-white/70 shadow-[0_20px_60px_rgba(0,0,0,0.14)] px-6 py-6">
@@ -257,10 +290,10 @@ function SessionSummaryPageInner() {
                 }}
               />
               <h3 className="text-base font-semibold font-sans" style={{ color: colors.text }}>
-                목표
+                일정
               </h3>
               <span className="text-xs font-sans ml-auto" style={{ color: colors.textLight }}>
-                달성률 {completionRate}%
+                완료율 {completionRate}%
               </span>
             </div>
 
@@ -274,25 +307,25 @@ function SessionSummaryPageInner() {
             ) : goals.length === 0 ? (
               <div className="flex items-center justify-center py-4">
                 <div className="text-xs font-sans" style={{ color: colors.textLight }}>
-                  등록된 목표가 없습니다
+                  등록된 일정이 없습니다
                 </div>
               </div>
             ) : (
               <>
-                {/* 달성한 목표 */}
+                {/* 완료한 일정 */}
                 {completedGoals.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <CheckCircle2 className="w-4 h-4" style={{ color: colors.main }} />
                       <span className="text-xs font-medium font-sans" style={{ color: colors.text }}>
-                        달성한 목표 ({completedGoals.length}개)
+                        완료한 일정 ({completedGoals.length}개)
                       </span>
                     </div>
                     <div className="space-y-2 pl-6">
                       {completedGoals.map((goal, index) => (
                         <div
                           key={goal.id}
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/50 border border-white/60 transition-all duration-500 ease-out"
+                          className={`flex items-center gap-3 px-3 py-2 rounded-xl border border-white/60 transition-all duration-500 ease-out ${goal.colorClass} bg-opacity-10`}
                           style={{
                             backdropFilter: "blur(10px)",
                             opacity: showSection2 ? 1 : 0,
@@ -300,33 +333,40 @@ function SessionSummaryPageInner() {
                             transitionDelay: `${index * 100}ms`,
                           }}
                         >
-                          <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: colors.main }} />
-                          <span
-                            className="text-xs font-sans line-through"
-                            style={{ color: "#6b7280" }} // 완료된 목표는 회색 + 취소선
-                          >
-                            {goal.text}
-                          </span>
+                          <div className="flex flex-col">
+                            <span
+                              className="text-[11px] font-sans"
+                              style={{ color: "rgba(255,255,255,0.85)" }}
+                            >
+                              {goal.timeRange}
+                            </span>
+                            <span
+                              className="text-xs font-sans font-semibold line-through"
+                              style={{ color: "rgba(255,255,255,0.9)" }} // 완료된 일정은 흰색 + 취소선
+                            >
+                              {goal.title}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* 달성하지 못한 목표 */}
+                {/* 완료하지 못한 일정 */}
                 {uncompletedGoals.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Circle className="w-4 h-4" style={{ color: colors.textLight }} />
                       <span className="text-xs font-medium font-sans" style={{ color: colors.textLight }}>
-                        달성하지 못한 목표 ({uncompletedGoals.length}개)
+                        완료하지 못한 일정 ({uncompletedGoals.length}개)
                       </span>
                     </div>
                     <div className="space-y-2 pl-6">
                       {uncompletedGoals.map((goal, index) => (
                         <div
                           key={goal.id}
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/30 border border-white/40 transition-all duration-500 ease-out"
+                          className={`flex items-center gap-3 px-3 py-2 rounded-xl border border-white/40 transition-all duration-500 ease-out ${goal.colorClass} bg-opacity-10`}
                           style={{
                             backdropFilter: "blur(10px)",
                             opacity: showSection2 ? 0.9 : 0,
@@ -334,13 +374,20 @@ function SessionSummaryPageInner() {
                             transitionDelay: `${(completedGoals.length + index) * 100}ms`,
                           }}
                         >
-                          <Circle className="w-4 h-4 flex-shrink-0" style={{ color: colors.textLight }} />
-                          <span
-                            className="text-xs font-sans"
-                            style={{ color: "#111827" }} // 미완료 목표 텍스트는 검정색
-                          >
-                            {goal.text}
-                          </span>
+                          <div className="flex flex-col">
+                            <span
+                              className="text-[11px] font-sans"
+                              style={{ color: "rgba(255,255,255,0.85)" }}
+                            >
+                              {goal.timeRange}
+                            </span>
+                            <span
+                              className="text-xs font-sans font-semibold"
+                              style={{ color: "rgba(255,255,255,0.95)" }} // 미완료 일정 제목은 진한 흰색
+                            >
+                              {goal.title}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
