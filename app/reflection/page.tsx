@@ -7,7 +7,7 @@ import { Home, Calendar, BookOpen, ChevronLeft, ChevronRight, Star } from "lucid
 import { useIsMobile } from "@/hooks/use-mobile"
 import { CustomScrollbar } from "@/components/ui/custom-scrollbar"
 import { Button } from "@/components/ui/button"
-import { getMyReflections, ReflectionQueryResponse } from "@/lib/api"
+import { getMyReflections, ReflectionQueryResponse, getCurrentUser } from "@/lib/api"
 
 interface Reflection {
   id: number
@@ -34,6 +34,7 @@ export default function ReflectionPage() {
   const [showAll, setShowAll] = useState(false)
   const [reflections, setReflections] = useState<Reflection[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [userCreatedAt, setUserCreatedAt] = useState<Date | null>(null) // 사용자 생성일
 
   // API 응답을 Reflection 인터페이스로 변환
   const convertToReflection = (response: ReflectionQueryResponse): Reflection => {
@@ -94,6 +95,19 @@ export default function ReflectionPage() {
   useEffect(() => {
     setIsLoaded(true)
     setTimeout(() => setShowHeader(true), 100)
+    
+    // 사용자 생성일 가져오기
+    const fetchUserCreatedAt = async () => {
+      try {
+        const user = await getCurrentUser()
+        if (user.createdAt) {
+          setUserCreatedAt(new Date(user.createdAt))
+        }
+      } catch (error) {
+        console.error("사용자 정보 조회 실패:", error)
+      }
+    }
+    fetchUserCreatedAt()
   }, [])
 
   // 캘린더 데이터 계산
@@ -201,7 +215,19 @@ export default function ReflectionPage() {
   }
 
   const handlePrevMonth = () => {
-    setDisplayMonth(new Date(displayMonth.getFullYear(), displayMonth.getMonth() - 1, 1))
+    if (!userCreatedAt) return
+    const newDate = new Date(displayMonth.getFullYear(), displayMonth.getMonth() - 1, 1)
+    // 사용자 생성일의 년도와 월을 기준으로 이전 달로 넘어가지 못하도록 제한
+    const userCreatedYear = userCreatedAt.getFullYear()
+    const userCreatedMonth = userCreatedAt.getMonth()
+    const newYear = newDate.getFullYear()
+    const newMonth = newDate.getMonth()
+    
+    // 생성일 이전 달이면 이동하지 않음
+    if (newYear < userCreatedYear || (newYear === userCreatedYear && newMonth < userCreatedMonth)) {
+      return
+    }
+    setDisplayMonth(newDate)
     setSelectedDate(null)
     setShowThisMonthOnly(false)
     setShowAll(false)
@@ -294,8 +320,9 @@ export default function ReflectionPage() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="p-1 rounded-full hover:bg-black/10 h-auto w-auto cursor-pointer"
+                        className="p-1 rounded-full hover:bg-black/10 h-auto w-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={handlePrevMonth}
+                        disabled={!userCreatedAt || (displayMonth.getFullYear() === userCreatedAt.getFullYear() && displayMonth.getMonth() === userCreatedAt.getMonth())}
                       >
                         <ChevronLeft className="h-4 w-4 text-foreground" />
                       </Button>

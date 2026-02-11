@@ -9,8 +9,8 @@ import {
 } from "./dialog"
 import { CustomScrollbar } from "./custom-scrollbar"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs"
-import { ChevronLeft, ChevronRight, Trophy } from "lucide-react"
-import { getStudyHeatmap } from "@/lib/api"
+import { ChevronLeft, ChevronRight, Trophy, Flame } from "lucide-react"
+import { getStudyHeatmap, getStudyTimeSummary, getMonthlyStudyStats, getCurrentUser } from "@/lib/api"
 import { Tooltip, TooltipTrigger, TooltipContent } from "./tooltip"
 import Image from "next/image"
 
@@ -31,10 +31,25 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
   const [studyMinutesMap, setStudyMinutesMap] = useState<Map<string, number>>(new Map())
   const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false)
   
+  // 통계 화면용 상태
+  const [selectedMonthRange, setSelectedMonthRange] = useState(0) // 0: 1-6월, 1: 7-12월
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false)
+  const [isLoadingMonthly, setIsLoadingMonthly] = useState(false)
+  const [userCreatedYear, setUserCreatedYear] = useState<number | null>(null) // 사용자 생성일 년도
+  
   // 임시 데이터: 나의 뽀모 정보
   const [myPomoData] = useState({
     points: 3200,
     level: 3, // 1~5 레벨
+  })
+  
+  // 통계 화면용 데이터 (API에서 가져온 데이터로 업데이트)
+  const [statisticsData, setStatisticsData] = useState({
+    consecutiveDays: 0, // 연속일 수
+    todayStudyMinutes: 0, // 오늘 공부 시간 (분)
+    weekStudyMinutes: 0, // 이번 주 공부 시간 (분)
+    monthStudyMinutes: 0, // 이번 달 공부 시간 (분)
+    monthlyData: [] as Array<{ month: number; minutes: number; color: string }>,
   })
   
   // 레벨에 따른 이미지 경로 반환
@@ -54,6 +69,97 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
         return "/images/level/level1png.png"
     }
   }
+
+  // 사용자 정보 가져오기 (생성일 확인용)
+  useEffect(() => {
+    if (!open) return
+
+    const fetchUserInfo = async () => {
+      try {
+        const user = await getCurrentUser()
+        // createdAt 필드가 있다면 년도 추출
+        if (user && 'createdAt' in user && user.createdAt) {
+          const createdDate = new Date(user.createdAt)
+          setUserCreatedYear(createdDate.getFullYear())
+        } else {
+          // createdAt이 없으면 현재 년도로 설정 (제한 없음)
+          setUserCreatedYear(null)
+        }
+      } catch (error) {
+        console.error("Failed to fetch user info:", error)
+        setUserCreatedYear(null)
+      }
+    }
+
+    fetchUserInfo()
+  }, [open])
+
+  // 공부 통계 요약 데이터 불러오기
+  useEffect(() => {
+    if (!open) return
+
+    const fetchSummary = async () => {
+      setIsLoadingSummary(true)
+      try {
+        const response = await getStudyTimeSummary()
+        setStatisticsData((prev) => ({
+          ...prev,
+          consecutiveDays: response.consecutiveDays,
+          todayStudyMinutes: response.todayMinutes,
+          weekStudyMinutes: response.thisWeekMinutes,
+          monthStudyMinutes: response.thisMonthMinutes,
+        }))
+      } catch (error) {
+        console.error("Failed to fetch study time summary:", error)
+        // 에러 발생 시 기본값 유지
+      } finally {
+        setIsLoadingSummary(false)
+      }
+    }
+
+    fetchSummary()
+  }, [open])
+
+  // 월별 공부 통계 데이터 불러오기
+  useEffect(() => {
+    if (!open) return
+
+    const fetchMonthlyStats = async () => {
+      setIsLoadingMonthly(true)
+      try {
+        // 선택된 범위의 시작 월을 기준으로 API 호출
+        // 0: 1-6월 → month=1, 1: 7-12월 → month=7
+        const targetMonth = selectedMonthRange === 0 ? 1 : 7
+        const response = await getMonthlyStudyStats(selectedYear, targetMonth)
+        
+        // API 응답을 컴포넌트 형식으로 변환
+        const monthlyData = response.monthlyRecords.map((record) => {
+          // 모든 막대를 동일한 색상으로 설정
+          return {
+            month: record.month,
+            minutes: record.totalMinutes,
+            color: "#2c5f2d", // 진한 녹색으로 통일
+          }
+        })
+        
+        setStatisticsData((prev) => ({
+          ...prev,
+          monthlyData,
+        }))
+      } catch (error) {
+        console.error("Failed to fetch monthly study stats:", error)
+        // 에러 발생 시 빈 배열 유지
+        setStatisticsData((prev) => ({
+          ...prev,
+          monthlyData: [],
+        }))
+      } finally {
+        setIsLoadingMonthly(false)
+      }
+    }
+
+    fetchMonthlyStats()
+  }, [open, selectedYear, selectedMonthRange])
 
   // 공부 히트맵 데이터 불러오기
   useEffect(() => {
@@ -133,6 +239,37 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
       return `${hours}시간`
     }
     return `${hours}시간 ${mins}분`
+  }
+  
+  // 통계 화면용: 분 단위를 "X시간" 또는 "X시간 Y분" 형태로 변환 (간단한 버전)
+  const formatStudyTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (hours === 0) {
+      return `${mins}분`
+    }
+    if (mins === 0) {
+      return `${hours}시간`
+    }
+    return `${hours}시간 ${mins}분`
+  }
+  
+  // 막대 그래프용: 분 단위를 시간만 "Xh" 형태로 변환
+  const formatStudyTimeForChart = (minutes: number) => {
+    const hours = Math.floor(minutes / 60)
+    return `${hours}h`
+  }
+  
+  // 통계 화면용: 현재 선택된 6개월 범위의 데이터 가져오기
+  // API가 이미 6개월 데이터를 반환하므로 그대로 사용
+  const getCurrentMonthRangeData = () => {
+    return statisticsData.monthlyData
+  }
+  
+  // 통계 화면용: 막대 그래프의 최대 높이 계산
+  const getMaxStudyMinutes = () => {
+    const currentData = getCurrentMonthRangeData()
+    return Math.max(...currentData.map((d) => d.minutes), 100) // 최소 100분
   }
 
   interface StudyDayTooltipProps {
@@ -232,23 +369,174 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
 
           <CustomScrollbar className="flex-1 overflow-y-auto min-h-0">
             <TabsContent value="mypomo" className="mt-0">
-              <div className="flex flex-col items-center justify-center gap-6 px-2 py-12">
-                <Image
-                  src="/images/home_icon.png"
-                  alt="개발 중 안내 아이콘"
-                  width={80}
-                  height={80}
-                  className="w-20 h-20 object-contain"
-                />
-                <div className="flex flex-col items-center gap-2 text-center">
-                  <h3 className="text-lg font-semibold" style={{ color: colors.text }}>
-                    통계 기능 개발 중
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    통계 기능은 현재 개발 중이에요.
-                    <br />
-                    곧 만나볼 수 있을 거예요!
-                  </p>
+              <div className="flex flex-col gap-6 px-2 py-4">
+                {/* 연속일 수 표시 */}
+                <div
+                  className="flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-[#2c5f2d]"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.4)",
+                    backdropFilter: "blur(10px)",
+                  }}
+                >
+                  <Flame className="w-6 h-6" style={{ color: "#ff6b35" }} />
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-600">연속 학습!</span>
+                    <span className="text-xl font-bold" style={{ color: colors.text }}>
+                      {statisticsData.consecutiveDays}일
+                    </span>
+                  </div>
+                </div>
+
+                {/* 공부 시간 카드들 */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div
+                    className="flex flex-col p-3 rounded-lg border-2 border-[#2c5f2d]"
+                    style={{
+                      background: "rgba(255, 255, 255, 0.4)",
+                      backdropFilter: "blur(10px)",
+                    }}
+                  >
+                    <span className="text-xs text-gray-600 mb-1">오늘</span>
+                    <span className="text-lg font-semibold" style={{ color: colors.text }}>
+                      {formatStudyTime(statisticsData.todayStudyMinutes)}
+                    </span>
+                  </div>
+                  <div
+                    className="flex flex-col p-3 rounded-lg border-2 border-[#2c5f2d]"
+                    style={{
+                      background: "rgba(255, 255, 255, 0.4)",
+                      backdropFilter: "blur(10px)",
+                    }}
+                  >
+                    <span className="text-xs text-gray-600 mb-1">이번 주</span>
+                    <span className="text-lg font-semibold" style={{ color: colors.text }}>
+                      {formatStudyTime(statisticsData.weekStudyMinutes)}
+                    </span>
+                  </div>
+                  <div
+                    className="flex flex-col p-3 rounded-lg border-2 border-[#2c5f2d]"
+                    style={{
+                      background: "rgba(255, 255, 255, 0.4)",
+                      backdropFilter: "blur(10px)",
+                    }}
+                  >
+                    <span className="text-xs text-gray-600 mb-1">이번 달</span>
+                    <span className="text-lg font-semibold" style={{ color: colors.text }}>
+                      {formatStudyTime(statisticsData.monthStudyMinutes)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 월별 공부 시간 그래프 */}
+                <div
+                  className="flex flex-col gap-4 p-4 rounded-xl border-2 border-[#2c5f2d]"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.4)",
+                    backdropFilter: "blur(10px)",
+                  }}
+                >
+                  {/* 년도 및 월 범위 네비게이션 */}
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold" style={{ color: colors.text }}>
+                      {selectedYear}년
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (selectedMonthRange === 0) {
+                            // 1-6월 범위에서 이전 버튼: 전년의 7-12월로 이동
+                            setSelectedYear(selectedYear - 1)
+                            setSelectedMonthRange(1)
+                          } else {
+                            // 7-12월 범위에서 이전 버튼: 같은 년도의 1-6월로 이동
+                            setSelectedMonthRange(0)
+                          }
+                        }}
+                        disabled={
+                          userCreatedYear !== null &&
+                          (selectedYear < userCreatedYear ||
+                            (selectedYear === userCreatedYear && selectedMonthRange === 0))
+                        }
+                        className={`p-1 rounded-full transition-colors ${
+                          userCreatedYear !== null &&
+                          (selectedYear < userCreatedYear ||
+                            (selectedYear === userCreatedYear && selectedMonthRange === 0))
+                            ? "opacity-30 cursor-not-allowed"
+                            : "hover:bg-white/50 cursor-pointer"
+                        }`}
+                        style={{ color: colors.text }}
+                        aria-label="이전 기간"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <span className="text-sm font-medium" style={{ color: colors.text }}>
+                        {selectedMonthRange === 0 ? "1월 - 6월" : "7월 - 12월"}
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (selectedMonthRange === 1) {
+                            // 7-12월 범위에서 다음 버튼: 내년의 1-6월로 이동
+                            setSelectedYear(selectedYear + 1)
+                            setSelectedMonthRange(0)
+                          } else {
+                            // 1-6월 범위에서 다음 버튼: 같은 년도의 7-12월로 이동
+                            setSelectedMonthRange(1)
+                          }
+                        }}
+                        className="p-1 rounded-full transition-colors hover:bg-white/50 cursor-pointer"
+                        style={{ color: colors.text }}
+                        aria-label="다음 기간"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 범례 */}
+                  <div className="flex items-center justify-end gap-2 mb-6">
+                    <div className="w-3 h-3 rounded-full" style={{ background: "#2c5f2d" }} />
+                    <span className="text-xs text-gray-600">월별 총 공부시간</span>
+                  </div>
+
+                  {/* 막대 그래프 */}
+                  <div className="flex items-end justify-around gap-3 h-72">
+                    {getCurrentMonthRangeData().map((data) => {
+                      const maxMinutes = getMaxStudyMinutes()
+                      const heightPercentage = (data.minutes / maxMinutes) * 100
+                      const barHeight = Math.max((heightPercentage / 100) * 240, 20) // 최소 20px (h-72 = 288px, 여유 공간 고려하여 240px 기준)
+
+                      return (
+                        <div
+                          key={data.month}
+                          className="flex flex-col items-center gap-2"
+                        >
+                          {/* 공부 시간 표시 (막대 위) */}
+                          <div
+                            className="text-xs font-medium mb-1"
+                            style={{ color: colors.text }}
+                          >
+                            {formatStudyTimeForChart(data.minutes)}
+                          </div>
+                          {/* 막대 */}
+                          <div
+                            className="w-12 rounded-t-lg transition-all hover:opacity-80"
+                            style={{
+                              height: `${barHeight}px`,
+                              background: data.color,
+                              minHeight: "20px",
+                            }}
+                          />
+                          {/* 월 레이블 */}
+                          <div
+                            className="text-xs font-medium mt-1"
+                            style={{ color: colors.text }}
+                          >
+                            {data.month}월
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </TabsContent>

@@ -537,9 +537,8 @@ function HomePageInner() {
                             </span>
                             {/* 타이머 타입 표시 */}
                             <span
-                              className="px-2 py-0.5 rounded-md text-[10px] md:text-xs font-semibold flex-shrink-0 flex items-center gap-1"
+                              className="px-2 py-0.5 rounded-md text-[10px] md:text-xs font-semibold flex-shrink-0 flex items-center gap-1 bg-gray-100/50"
                               style={{
-                                background: room.timerType === TimerType.POMODORO ? "#d9f2d9" : "#e0e7ff",
                                 color: room.timerType === TimerType.POMODORO ? "#2c5f2d" : "#4f46e5",
                               }}
                             >
@@ -744,9 +743,8 @@ function HomePageInner() {
                           </span>
                           {/* 타이머 타입 표시 */}
                           <span
-                            className="px-2 py-0.5 rounded-md text-[10px] md:text-xs font-semibold flex-shrink-0 flex items-center gap-1"
+                            className="px-2 py-0.5 rounded-md text-[10px] md:text-xs font-semibold flex-shrink-0 flex items-center gap-1 bg-gray-100/50"
                             style={{
-                              background: room.timerType === TimerType.POMODORO ? "#d9f2d9" : "#e0e7ff",
                               color: room.timerType === TimerType.POMODORO ? "#2c5f2d" : "#4f46e5",
                             }}
                           >

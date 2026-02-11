@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createPlan, updatePlan, deletePlan, getPlansByDateRange, getPlansByDate, EventColor, PlanResponse, ApiError } from "@/lib/api"
+import { createPlan, updatePlan, deletePlan, togglePlanCompleted, togglePlanUncompleted, getPlansByDateRange, getPlansByDate, EventColor, PlanResponse, ApiError, getCurrentUser } from "@/lib/api"
 import { showSuccessNotification, showErrorNotification } from "@/lib/system-notification"
 
 interface Event {
@@ -63,6 +63,7 @@ export default function CalendarPage() {
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [isCreatingPlan, setIsCreatingPlan] = useState(false) // 계획 생성 중 상태
   const [isUpdatingPlan, setIsUpdatingPlan] = useState(false) // 계획 수정 중 상태
+  const [userCreatedAt, setUserCreatedAt] = useState<Date | null>(null) // 사용자 생성일
   
   // 수정용 state
   const [editEventTitle, setEditEventTitle] = useState("")
@@ -146,10 +147,64 @@ export default function CalendarPage() {
   useEffect(() => {
     setIsLoaded(true)
     setTimeout(() => setShowHeader(true), 100)
+    
+    // 사용자 생성일 가져오기
+    const fetchUserCreatedAt = async () => {
+      try {
+        const user = await getCurrentUser()
+        if (user.createdAt) {
+          setUserCreatedAt(new Date(user.createdAt))
+        }
+      } catch (error) {
+        console.error("사용자 정보 조회 실패:", error)
+      }
+    }
+    fetchUserCreatedAt()
   }, [])
 
   const handleEventClick = (event: Event) => {
     setSelectedEvent(event)
+  }
+
+  const handleToggleCompleted = async (event: Event) => {
+    if (!event.id) return
+
+    try {
+      // 완료 상태에 따라 적절한 API 호출
+      if (event.completed) {
+        // 현재 완료 상태이면 미완료로 변경
+        await togglePlanUncompleted(event.id)
+        showSuccessNotification("계획이 미완료로 변경되었습니다.")
+      } else {
+        // 현재 미완료 상태이면 완료로 변경
+        await togglePlanCompleted(event.id)
+        showSuccessNotification("계획이 완료되었습니다.")
+      }
+
+      // 계획 목록 다시 조회 (최신 데이터 반영)
+      let plans: PlanResponse[]
+      if (isMobile) {
+        const date = format(visibleDays[0], "yyyy-MM-dd")
+        plans = await getPlansByDate(date)
+      } else {
+        const startDate = format(visibleDays[0], "yyyy-MM-dd")
+        const endDate = format(visibleDays[visibleDays.length - 1], "yyyy-MM-dd")
+        plans = await getPlansByDateRange(startDate, endDate)
+      }
+      const convertedEvents = plans.map(plan => convertPlanToEvent(plan, visibleDays))
+      setEvents(convertedEvents)
+
+      // 선택된 이벤트도 업데이트
+      const updatedEvent = convertedEvents.find(e => e.id === event.id)
+      if (updatedEvent) {
+        setSelectedEvent(updatedEvent)
+      }
+    } catch (error) {
+      console.error("계획 완료 토글 실패:", error)
+      if (error instanceof ApiError && error.requiresLogin) {
+        // 로그인 필요 에러는 별도 처리 (이미 시스템 알림 표시됨)
+      }
+    }
   }
 
   // 프론트엔드 색상 클래스명을 백엔드 EventColor로 변환
@@ -571,12 +626,24 @@ export default function CalendarPage() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="p-1 rounded-full hover:bg-black/10 h-auto w-auto cursor-pointer"
+                      className="p-1 rounded-full hover:bg-black/10 h-auto w-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => {
+                        if (!userCreatedAt) return
                         const newDate = new Date(displayMonth)
                         newDate.setMonth(newDate.getMonth() - 1)
+                        // 사용자 생성일의 년도와 월을 기준으로 이전 달로 넘어가지 못하도록 제한
+                        const userCreatedYear = userCreatedAt.getFullYear()
+                        const userCreatedMonth = userCreatedAt.getMonth()
+                        const newYear = newDate.getFullYear()
+                        const newMonth = newDate.getMonth()
+                        
+                        // 생성일 이전 달이면 이동하지 않음
+                        if (newYear < userCreatedYear || (newYear === userCreatedYear && newMonth < userCreatedMonth)) {
+                          return
+                        }
                         setDisplayMonth(newDate)
                       }}
+                      disabled={!userCreatedAt || (displayMonth.getFullYear() === userCreatedAt.getFullYear() && displayMonth.getMonth() === userCreatedAt.getMonth())}
                     >
                       <ChevronLeft className="h-4 w-4 text-foreground" />
                     </Button>
@@ -849,15 +916,23 @@ export default function CalendarPage() {
                       return (
                         <div
                           key={i}
-                          className={`absolute ${event.color} rounded-md p-2 text-white text-xs shadow-md cursor-pointer transition-all duration-200 ease-in-out hover:translate-y-[-2px] hover:shadow-lg`}
+                          className={`absolute ${event.color} rounded-md p-2 text-white text-xs shadow-md cursor-pointer transition-all duration-200 ease-in-out hover:translate-y-[-2px] hover:shadow-lg ${
+                            event.completed ? "opacity-60" : ""
+                          }`}
                           style={{
                             ...eventStyle,
                             left: "4px",
                             right: "4px",
+                            ...(event.completed ? {
+                              textDecoration: "line-through",
+                            } : {}),
                           }}
                           onClick={() => handleEventClick(event)}
                         >
-                          <div className="font-medium">{event.title}</div>
+                          <div className="font-medium flex items-center gap-1">
+                            {event.completed && <CheckCircle2 className="h-3 w-3" />}
+                            {event.title}
+                          </div>
                           <div className="opacity-80 text-[10px] mt-1">{`${formatTimeWithoutSeconds(event.startTime)} - ${formatTimeWithoutSeconds(event.endTime)}`}</div>
                         </div>
                       )
@@ -912,6 +987,22 @@ export default function CalendarPage() {
                   aria-label="삭제하기"
                 >
                   <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="secondary"
+                  className={`${
+                    selectedEvent.completed
+                      ? "bg-yellow-500 hover:!bg-yellow-600"
+                      : "bg-green-500 hover:!bg-green-600"
+                  } text-white px-4 py-2 rounded cursor-pointer hover:!opacity-100 transition-transform hover:scale-105 active:scale-95 flex items-center gap-2`}
+                  onClick={() => {
+                    if (selectedEvent) {
+                      handleToggleCompleted(selectedEvent)
+                    }
+                  }}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {selectedEvent.completed ? "미완료로 변경" : "완료하기"}
                 </Button>
                 <Button
                   variant="secondary"
@@ -1075,12 +1166,24 @@ export default function CalendarPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="p-1 rounded-full hover:bg-black/10 h-auto w-auto cursor-pointer"
+                            className="p-1 rounded-full hover:bg-black/10 h-auto w-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             onClick={() => {
+                              if (!userCreatedAt) return
                               const newDate = new Date(dialogDisplayMonth)
                               newDate.setMonth(newDate.getMonth() - 1)
+                              // 사용자 생성일의 년도와 월을 기준으로 이전 달로 넘어가지 못하도록 제한
+                              const userCreatedYear = userCreatedAt.getFullYear()
+                              const userCreatedMonth = userCreatedAt.getMonth()
+                              const newYear = newDate.getFullYear()
+                              const newMonth = newDate.getMonth()
+                              
+                              // 생성일 이전 달이면 이동하지 않음
+                              if (newYear < userCreatedYear || (newYear === userCreatedYear && newMonth < userCreatedMonth)) {
+                                return
+                              }
                               setDialogDisplayMonth(newDate)
                             }}
+                            disabled={!userCreatedAt || (dialogDisplayMonth.getFullYear() === userCreatedAt.getFullYear() && dialogDisplayMonth.getMonth() === userCreatedAt.getMonth())}
                           >
                             <ChevronLeft className="h-4 w-4 text-foreground" />
                           </Button>
@@ -1370,12 +1473,24 @@ export default function CalendarPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="p-1 rounded-full hover:bg-black/10 h-auto w-auto cursor-pointer"
+                            className="p-1 rounded-full hover:bg-black/10 h-auto w-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             onClick={() => {
+                              if (!userCreatedAt) return
                               const newDate = new Date(dialogDisplayMonth)
                               newDate.setMonth(newDate.getMonth() - 1)
+                              // 사용자 생성일의 년도와 월을 기준으로 이전 달로 넘어가지 못하도록 제한
+                              const userCreatedYear = userCreatedAt.getFullYear()
+                              const userCreatedMonth = userCreatedAt.getMonth()
+                              const newYear = newDate.getFullYear()
+                              const newMonth = newDate.getMonth()
+                              
+                              // 생성일 이전 달이면 이동하지 않음
+                              if (newYear < userCreatedYear || (newYear === userCreatedYear && newMonth < userCreatedMonth)) {
+                                return
+                              }
                               setDialogDisplayMonth(newDate)
                             }}
+                            disabled={!userCreatedAt || (dialogDisplayMonth.getFullYear() === userCreatedAt.getFullYear() && dialogDisplayMonth.getMonth() === userCreatedAt.getMonth())}
                           >
                             <ChevronLeft className="h-4 w-4 text-foreground" />
                           </Button>

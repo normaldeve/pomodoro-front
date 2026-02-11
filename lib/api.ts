@@ -74,6 +74,10 @@ export const API_ENDPOINTS = {
   GET_MY_REFLECTIONS: `${API_BASE_URL}/api/reflections/my`,
   // 사용자 공부 통계 (히트맵)
   GET_MY_STUDY_STATS: `${API_BASE_URL}/api/stats/me`,
+  // 사용자 공부 통계 요약
+  GET_STUDY_TIME_SUMMARY: `${API_BASE_URL}/api/stats/me/summary`,
+  // 사용자 월별 공부 통계
+  GET_MONTHLY_STUDY_STATS: `${API_BASE_URL}/api/stats/me/monthly`,
   // 계획 생성
   CREATE_PLAN: `${API_BASE_URL}/api/plans`,
   // 기간별 계획 조회
@@ -513,6 +517,7 @@ export interface AuthDTO {
   nickname: string
   profileUrl: string | null
   role: Role
+  createdAt?: string // ISO 8601 형식의 날짜 문자열 (사용자 생성일)
 }
 
 export interface TokenResponse {
@@ -877,6 +882,57 @@ export async function getStudyHeatmap(year: number): Promise<StudyHeatmapRespons
 }
 
 /**
+ * 사용자 공부 시간 요약 통계 API
+ */
+export interface StudyTimeSummaryResponse {
+  todayMinutes: number
+  thisWeekMinutes: number
+  thisMonthMinutes: number
+  consecutiveDays: number
+}
+
+/**
+ * 내 공부 시간 요약 통계를 조회
+ */
+export async function getStudyTimeSummary(): Promise<StudyTimeSummaryResponse> {
+  return apiRequest<StudyTimeSummaryResponse>(API_ENDPOINTS.GET_STUDY_TIME_SUMMARY, {
+    method: 'GET',
+  })
+}
+
+/**
+ * 사용자 월별 공부 통계 API
+ */
+export interface MonthRecord {
+  year: number
+  month: number
+  totalMinutes: number
+}
+
+export interface MonthlyStudyStatResponse {
+  startYear: number
+  startMonth: number
+  endYear: number
+  endMonth: number
+  monthlyRecords: MonthRecord[]
+}
+
+/**
+ * 월별 공부 통계를 조회 (해당 월을 포함하여 6개월 데이터)
+ */
+export async function getMonthlyStudyStats(
+  year: number,
+  month: number
+): Promise<MonthlyStudyStatResponse> {
+  return apiRequest<MonthlyStudyStatResponse>(
+    `${API_ENDPOINTS.GET_MONTHLY_STUDY_STATS}?year=${year}&month=${month}`,
+    {
+      method: 'GET',
+    }
+  )
+}
+
+/**
  * 메시지 관련 API
  */
 export interface MessageSliceResponse {
@@ -1182,5 +1238,25 @@ export async function getPlansByDate(date: string): Promise<PlanResponse[]> {
 export async function deletePlan(planId: number): Promise<void> {
   return apiRequest<void>(`${API_ENDPOINTS.CREATE_PLAN}/${planId}`, {
     method: 'DELETE',
+  })
+}
+
+/**
+ * 계획 완료 상태 토글 API
+ * @param planId 계획 ID
+ */
+export async function togglePlanCompleted(planId: number): Promise<PlanResponse> {
+  return apiRequest<PlanResponse>(`${API_ENDPOINTS.CREATE_PLAN}/${planId}/toggle/completed`, {
+    method: 'PATCH',
+  })
+}
+
+/**
+ * 계획 미완료 상태 토글 API
+ * @param planId 계획 ID
+ */
+export async function togglePlanUncompleted(planId: number): Promise<PlanResponse> {
+  return apiRequest<PlanResponse>(`${API_ENDPOINTS.CREATE_PLAN}/${planId}/toggle/uncompleted`, {
+    method: 'PATCH',
   })
 }

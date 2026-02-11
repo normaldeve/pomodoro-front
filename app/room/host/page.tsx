@@ -31,7 +31,7 @@ import { format, addDays, subDays, startOfMonth, endOfMonth, startOfWeek, endOfW
 import { CustomScrollbar } from "@/components/ui/custom-scrollbar"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Input } from "@/components/ui/input"
-import { createPlan, updatePlan, deletePlan, ApiError } from "@/lib/api"
+import { createPlan, updatePlan, deletePlan, togglePlanCompleted, togglePlanUncompleted, ApiError } from "@/lib/api"
 import { showSuccessNotification } from "@/lib/system-notification"
 
 // 초를 00:00 형식으로 변환하는 함수
@@ -316,6 +316,47 @@ function HostRoomPageInner() {
 
   const handleEventClick = (event: Event) => {
     setSelectedEvent(event)
+  }
+
+  const handleToggleCompleted = async (event: Event) => {
+    if (!event.id) return
+
+    try {
+      // 완료 상태에 따라 적절한 API 호출
+      if (event.completed) {
+        // 현재 완료 상태이면 미완료로 변경
+        await togglePlanUncompleted(event.id)
+        showSuccessNotification("계획이 미완료로 변경되었습니다.")
+      } else {
+        // 현재 미완료 상태이면 완료로 변경
+        await togglePlanCompleted(event.id)
+        showSuccessNotification("계획이 완료되었습니다.")
+      }
+
+      // 계획 목록 다시 조회 (최신 데이터 반영)
+      let plans: PlanResponse[]
+      if (isMobile) {
+        const date = format(visibleDays[0], "yyyy-MM-dd")
+        plans = await getPlansByDate(date)
+      } else {
+        const startDate = format(visibleDays[0], "yyyy-MM-dd")
+        const endDate = format(visibleDays[visibleDays.length - 1], "yyyy-MM-dd")
+        plans = await getPlansByDateRange(startDate, endDate)
+      }
+      const convertedEvents = plans.map(plan => convertPlanToEvent(plan, visibleDays))
+      setEvents(convertedEvents)
+
+      // 선택된 이벤트도 업데이트
+      const updatedEvent = convertedEvents.find(e => e.id === event.id)
+      if (updatedEvent) {
+        setSelectedEvent(updatedEvent)
+      }
+    } catch (error) {
+      console.error("계획 완료 토글 실패:", error)
+      if (error instanceof ApiError && error.requiresLogin) {
+        // 로그인 필요 에러는 별도 처리 (이미 시스템 알림 표시됨)
+      }
+    }
   }
 
   // 프론트엔드 색상 클래스명을 백엔드 EventColor로 변환
@@ -734,44 +775,54 @@ function HostRoomPageInner() {
     loadParticipants()
   }, [roomInfo?.roomId])
 
-  // 회고 목록 로드
-  useEffect(() => {
-    const loadReflections = async () => {
-      if (!roomInfo?.roomId) return
+  // 회고 목록 로드 함수
+  const loadReflections = async () => {
+    if (!roomInfo?.roomId) return
 
-      try {
-        const reflections = await getRoomReflections(roomInfo.roomId)
-        // ReflectionResponse를 Reflection 컴포넌트 형식으로 변환
-        const convertedReflections = reflections.map((reflection: ReflectionResponse) => ({
-          id: reflection.reflectionId,
-          authorName: reflection.nickname,
-          authorAvatar: reflection.userProfileUrl || undefined,
-          content: reflection.content,
-          images: reflection.imageUrl ? [reflection.imageUrl] : [],
-          timestamp: new Date(reflection.createdAt),
-          focusScore: reflection.focusScore,
-          sessionId: reflection.sessionId,
-        }))
-        // 최신 순으로 정렬
-        convertedReflections.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-        setInitialReflections(convertedReflections)
-        
-        // 이미 로드된 회고 ID들을 processedReflectionIds에 추가 (웹소켓 중복 방지)
-        setProcessedReflectionIds((prev) => {
-          const next = new Set(prev)
-          convertedReflections.forEach((reflection) => {
-            next.add(reflection.id)
-          })
-          return next
+    try {
+      const reflections = await getRoomReflections(roomInfo.roomId)
+      // ReflectionResponse를 Reflection 컴포넌트 형식으로 변환
+      const convertedReflections = reflections.map((reflection: ReflectionResponse) => ({
+        id: reflection.reflectionId,
+        authorName: reflection.nickname,
+        authorAvatar: reflection.userProfileUrl || undefined,
+        content: reflection.content,
+        images: reflection.imageUrl ? [reflection.imageUrl] : [],
+        timestamp: new Date(reflection.createdAt),
+        focusScore: reflection.focusScore,
+        sessionId: reflection.sessionId,
+      }))
+      // 최신 순으로 정렬
+      convertedReflections.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      setInitialReflections(convertedReflections)
+      
+      // 이미 로드된 회고 ID들을 processedReflectionIds에 추가 (웹소켓 중복 방지)
+      setProcessedReflectionIds((prev) => {
+        const next = new Set(prev)
+        convertedReflections.forEach((reflection) => {
+          next.add(reflection.id)
         })
-      } catch (error) {
-        console.error("회고 목록 로드 실패:", error)
-        setInitialReflections([])
-      }
+        return next
+      })
+    } catch (error) {
+      console.error("회고 목록 로드 실패:", error)
+      setInitialReflections([])
     }
+  }
 
-    loadReflections()
-  }, [roomInfo?.roomId])
+  // 일반 방: roomId 변경 시 회고 목록 로드
+  useEffect(() => {
+    if (!roomInfo?.isPermanent) {
+      loadReflections()
+    }
+  }, [roomInfo?.roomId, roomInfo?.isPermanent])
+
+  // 상시 운영방: 회고 탭 클릭 시 회고 목록 로드
+  useEffect(() => {
+    if (roomInfo?.isPermanent && activeTab === "reflection") {
+      loadReflections()
+    }
+  }, [activeTab, roomInfo?.isPermanent, roomInfo?.roomId])
 
   // WebSocket으로 받은 방 상태 업데이트
   useEffect(() => {
@@ -1466,15 +1517,23 @@ function HostRoomPageInner() {
                               return (
                                 <div
                                   key={i}
-                                  className={`absolute ${event.color} rounded-md p-2 text-white text-xs shadow-md cursor-pointer transition-all duration-200 ease-in-out hover:translate-y-[-2px] hover:shadow-lg`}
+                                  className={`absolute ${event.color} rounded-md p-2 text-white text-xs shadow-md cursor-pointer transition-all duration-200 ease-in-out hover:translate-y-[-2px] hover:shadow-lg ${
+                                    event.completed ? "opacity-60" : ""
+                                  }`}
                                   style={{
                                     ...eventStyle,
                                     left: "4px",
                                     right: "4px",
+                                    ...(event.completed ? {
+                                      textDecoration: "line-through",
+                                    } : {}),
                                   }}
                                   onClick={() => handleEventClick(event)}
                                 >
-                                  <div className="font-medium">{event.title}</div>
+                                  <div className="font-medium flex items-center gap-1">
+                                    {event.completed && <CheckCircle2 className="h-3 w-3" />}
+                                    {event.title}
+                                  </div>
                                   <div className="opacity-80 text-[10px] mt-1">{`${formatTimeWithoutSeconds(event.startTime)} - ${formatTimeWithoutSeconds(event.endTime)}`}</div>
                                 </div>
                               )
@@ -2093,6 +2152,22 @@ function HostRoomPageInner() {
                 aria-label="삭제하기"
               >
                 <Trash2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="secondary"
+                className={`${
+                  selectedEvent.completed
+                    ? "bg-yellow-500 hover:!bg-yellow-600"
+                    : "bg-green-500 hover:!bg-green-600"
+                } text-white px-4 py-2 rounded cursor-pointer hover:!opacity-100 transition-transform hover:scale-105 active:scale-95 flex items-center gap-2`}
+                onClick={() => {
+                  if (selectedEvent) {
+                    handleToggleCompleted(selectedEvent)
+                  }
+                }}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {selectedEvent.completed ? "미완료로 변경" : "완료하기"}
               </Button>
               <Button
                 variant="secondary"
