@@ -1118,7 +1118,7 @@ function HostRoomPageInner() {
                 }}
               />
             )}
-            <div className="pointer-events-none absolute bottom-20 right-4 z-40 flex flex-col items-end gap-3">
+            <div className="pointer-events-none fixed bottom-[80px] right-4 z-40 flex flex-col items-end gap-3">
               {/* 채팅 패널 */}
               <div
                 className={`transition-all duration-300 overflow-hidden flex justify-end ${
