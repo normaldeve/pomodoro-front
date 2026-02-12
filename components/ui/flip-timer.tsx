@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from "react"
-import { Pause, Play, Check, X, Settings, Plus, Minus } from "lucide-react"
+import { Pause, Play, Check, X, Settings } from "lucide-react"
 import { TimerState } from "@/lib/websocket"
 import { ThemedFlipDigit } from "./themed-flip-digit"
 import { cn } from "@/lib/utils"
@@ -380,27 +380,6 @@ export function FlipTimer({
             <div className="flex items-center gap-4">
               {/* 시간 입력 */}
               <div className="flex flex-col items-center gap-2">
-                <button
-                  onClick={() => {
-                    if (isEditingNextFocus) {
-                      setEditingHours(editingHours + 1)
-                    } else {
-                      handleTimeChange(1, 0)
-                    }
-                  }}
-                  className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300",
-                    "disabled:opacity-50 disabled:cursor-not-allowed"
-                  )}
-                  style={{
-                    background: colors.buttonBgLight,
-                    color: colors.text,
-                    border: `1px solid ${colors.shadow}`,
-                  }}
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
-                
                 <div className="flex items-center gap-1">
                   <input
                     type="number"
@@ -423,63 +402,12 @@ export function FlipTimer({
                     시간
                   </span>
                 </div>
-
-                <button
-                  onClick={() => {
-                    if (isEditingNextFocus) {
-                      const newHours = Math.max(0, editingHours - 1)
-                      setEditingHours(newHours)
-                    } else {
-                      handleTimeChange(-1, 0)
-                    }
-                  }}
-                  disabled={isEditingNextFocus ? editingHours <= 0 && editingMinutes <= 1 : getTotalMinutes(hours, minutes) <= 1}
-                  className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300",
-                    "disabled:opacity-50 disabled:cursor-not-allowed"
-                  )}
-                  style={{
-                    background: colors.buttonBgLight,
-                    color: colors.text,
-                    border: `1px solid ${colors.shadow}`,
-                  }}
-                >
-                  <Minus className="h-5 w-5" />
-                </button>
               </div>
 
               <span className="text-3xl font-bold" style={{ color: colors.text }}>:</span>
 
               {/* 분 입력 */}
               <div className="flex flex-col items-center gap-2">
-                <button
-                  onClick={() => {
-                    if (isEditingNextFocus) {
-                      let newHours = editingHours
-                      let newMinutes = editingMinutes + 1
-                      if (newMinutes >= 60) {
-                        newHours += 1
-                        newMinutes = 0
-                      }
-                      setEditingHours(newHours)
-                      setEditingMinutes(newMinutes)
-                    } else {
-                      handleTimeChange(0, 1)
-                    }
-                  }}
-                  className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300",
-                    "disabled:opacity-50 disabled:cursor-not-allowed"
-                  )}
-                  style={{
-                    background: colors.buttonBgLight,
-                    color: colors.text,
-                    border: `1px solid ${colors.shadow}`,
-                  }}
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
-                
                 <div className="flex items-center gap-1">
                   <input
                     type="number"
@@ -503,39 +431,6 @@ export function FlipTimer({
                     분
                   </span>
                 </div>
-
-                <button
-                  onClick={() => {
-                    if (isEditingNextFocus) {
-                      let newHours = editingHours
-                      let newMinutes = editingMinutes - 1
-                      if (newMinutes < 0) {
-                        if (newHours > 0) {
-                          newHours -= 1
-                          newMinutes = 59
-                        } else {
-                          newMinutes = 0
-                        }
-                      }
-                      setEditingHours(newHours)
-                      setEditingMinutes(newMinutes)
-                    } else {
-                      handleTimeChange(0, -1)
-                    }
-                  }}
-                  disabled={isEditingNextFocus ? editingHours <= 0 && editingMinutes <= 0 : getTotalMinutes(hours, minutes) <= 1}
-                  className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300",
-                    "disabled:opacity-50 disabled:cursor-not-allowed"
-                  )}
-                  style={{
-                    background: colors.buttonBgLight,
-                    color: colors.text,
-                    border: `1px solid ${colors.shadow}`,
-                  }}
-                >
-                  <Minus className="h-5 w-5" />
-                </button>
               </div>
             </div>
           </div>

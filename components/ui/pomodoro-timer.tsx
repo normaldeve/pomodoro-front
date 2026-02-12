@@ -532,11 +532,25 @@ export function PomodoroTimer({
 
       {/* Title + session info */}
       <div className="flex flex-col items-center gap-2">
-        {/* 세션 정보는 WAITING 상태가 아니고 상시 운영 방이 아닐 때만 표시 */}
+        <div className="flex items-center gap-3">
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{
+              background: colors.main,
+              boxShadow: `0 0 10px ${colors.shadow}`,
+            }}
+          />
+          <span
+            className="text-xl font-medium font-sans"
+            style={{ color: colors.text }}
+          >
+            {phaseTitle}
+          </span>
+        </div>
         {!isWaiting && !isPermanent && (
           <div
-            className="text-lg font-medium font-sans"
-            style={{ color: colors.text }}
+            className="text-sm font-sans"
+            style={{ color: colors.textLight }}
           >
             현재 세션 {effectiveCurrentSession} / {effectiveTotalSessions}
           </div>
