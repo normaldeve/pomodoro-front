@@ -499,7 +499,7 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
                   </div>
 
                   {/* 막대 그래프 */}
-                  <div className="flex items-end justify-around gap-3 h-72">
+                  <div className="flex items-end justify-between md:justify-around gap-1 md:gap-3 h-72 px-1 md:px-0">
                     {getCurrentMonthRangeData().map((data) => {
                       const maxMinutes = getMaxStudyMinutes()
                       const heightPercentage = (data.minutes / maxMinutes) * 100
@@ -508,7 +508,7 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
                       return (
                         <div
                           key={data.month}
-                          className="flex flex-col items-center gap-2"
+                          className="flex flex-col items-center gap-1 md:gap-2 flex-1 md:flex-none"
                         >
                           {/* 공부 시간 표시 (막대 위) */}
                           <div
@@ -519,7 +519,7 @@ export function UserStudyRecordsDialog({ open, onOpenChange }: UserStudyRecordsD
                           </div>
                           {/* 막대 */}
                           <div
-                            className="w-12 rounded-t-lg transition-all hover:opacity-80"
+                            className="w-full max-w-[40px] md:w-12 rounded-t-lg transition-all hover:opacity-80"
                             style={{
                               height: `${barHeight}px`,
                               background: data.color,
