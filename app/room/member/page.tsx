@@ -114,6 +114,8 @@ function MemberRoomPageInner() {
   const [hasNewChat, setHasNewChat] = useState(false)
   const [hasNewParticipantsEvent, setHasNewParticipantsEvent] = useState(false)
   const isMobile = useIsMobile()
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const chatPanelRef = useRef<HTMLDivElement>(null)
   
   // 주간 뷰 관련 state
   interface Event {
@@ -161,6 +163,56 @@ function MemberRoomPageInner() {
   useEffect(() => {
     setSoundEnabledState(isSoundEnabled())
   }, [])
+
+  // 모바일 키보드 높이 감지 및 채팅 패널 위치 조정
+  useEffect(() => {
+    if (!isMobile || typeof window === 'undefined') return
+
+    const handleResize = () => {
+      // visual viewport API 사용 (모바일 브라우저에서 키보드 높이 감지)
+      if (window.visualViewport) {
+        const viewportHeight = window.visualViewport.height
+        const windowHeight = window.innerHeight
+        const keyboardHeight = windowHeight - viewportHeight
+        
+        // 키보드가 올라왔을 때만 높이 설정 (최소 150px 이상일 때만)
+        if (keyboardHeight > 150) {
+          setKeyboardHeight(keyboardHeight)
+        } else {
+          setKeyboardHeight(0)
+        }
+      } else {
+        // visual viewport API를 지원하지 않는 경우 fallback
+        const windowHeight = window.innerHeight
+        const screenHeight = window.screen.height
+        const keyboardHeight = screenHeight - windowHeight
+        
+        if (keyboardHeight > 150) {
+          setKeyboardHeight(keyboardHeight)
+        } else {
+          setKeyboardHeight(0)
+        }
+      }
+    }
+
+    // 초기 높이 설정
+    handleResize()
+
+    // visual viewport 이벤트 리스너
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize)
+    }
+    
+    // 일반 resize 이벤트도 리스너로 추가 (fallback)
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize)
+      }
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [isMobile])
 
   // 항상 오늘 날짜 기준으로 표시할 날짜들 계산
   const visibleDays = useMemo(() => {
@@ -1092,7 +1144,15 @@ function MemberRoomPageInner() {
                 }}
               />
             )}
-            <div className="pointer-events-none fixed bottom-[80px] right-4 z-40 flex flex-col items-end gap-3">
+            <div 
+              ref={chatPanelRef}
+              className="pointer-events-none fixed right-2 md:right-4 z-40 flex flex-col items-end gap-3 transition-all duration-300"
+              style={{
+                bottom: isMobile && keyboardHeight > 0 
+                  ? `${keyboardHeight + 80}px` 
+                  : '80px'
+              }}
+            >
               {/* 채팅 패널 */}
               <div
                 className={`transition-all duration-300 overflow-hidden flex justify-end ${
@@ -1100,7 +1160,12 @@ function MemberRoomPageInner() {
                 }`}
               >
                 <div
-                  className="pointer-events-auto rounded-3xl bg-[#fff8ea] backdrop-blur-3xl border-2 border-[#2c5f2d] overflow-hidden min-h-[420px] max-h-[calc(100vh-140px)] flex flex-col w-[448px] md:w-[512px] relative"
+                  className="pointer-events-auto rounded-3xl bg-[#fff8ea] backdrop-blur-3xl border-2 border-[#2c5f2d] overflow-hidden min-h-[420px] flex flex-col w-[calc(100vw-1rem)] max-w-[448px] md:w-[448px] md:max-w-[512px] lg:w-[512px] relative"
+                  style={{
+                    maxHeight: isMobile && keyboardHeight > 0
+                      ? `calc(100vh - ${keyboardHeight + 160}px)`
+                      : 'calc(100vh - 140px)'
+                  }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* X 버튼 */}
@@ -1137,7 +1202,12 @@ function MemberRoomPageInner() {
                 }`}
               >
                 <div 
-                  className="pointer-events-auto rounded-3xl bg-[#fff8ea] backdrop-blur-3xl border-2 border-[#2c5f2d] overflow-hidden min-h-[420px] max-h-[calc(100vh-140px)] flex flex-col w-[448px] md:w-[512px] relative"
+                  className="pointer-events-auto rounded-3xl bg-[#fff8ea] backdrop-blur-3xl border-2 border-[#2c5f2d] overflow-hidden min-h-[420px] flex flex-col w-[calc(100vw-1rem)] max-w-[448px] md:w-[448px] md:max-w-[512px] lg:w-[512px] relative"
+                  style={{
+                    maxHeight: isMobile && keyboardHeight > 0
+                      ? `calc(100vh - ${keyboardHeight + 160}px)`
+                      : 'calc(100vh - 140px)'
+                  }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* X 버튼 */}
