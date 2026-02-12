@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, useRef, Suspense } from "react"
 import { getStudyRoomMembers, RoomMemberRole, getStudyRoom, getCurrentUser } from "@/lib/api"
 import { StudyRoomWebSocket, EnterStudyRoomRequest } from "@/lib/websocket"
+import { showErrorNotification } from "@/lib/system-notification"
 import {
   Dialog,
   DialogContent,
@@ -32,9 +33,10 @@ function RoomPageInner() {
     userId: number,
     password?: string,
     roomUrl?: string
-  ): Promise<{ success: boolean; role?: RoomMemberRole }> => {
+  ): Promise<{ success: boolean; role?: RoomMemberRole; errorCode?: string }> => {
     const ws = new StudyRoomWebSocket()
     let memberInfo: { userId: number; nickname: string; profileUrl: string | null } | null = null
+    let errorCode: string | null = null
 
     try {
       await ws.connect(
@@ -43,12 +45,28 @@ function RoomPageInner() {
         undefined, // 채팅 메시지 핸들러 (사용하지 않음)
         (member) => {
           // 참여자 정보 수신
+          // member가 null이면 에러일 수 있음 (에러 응답은 별도로 처리 필요)
           memberInfo = member
         }
       )
 
       // 구독이 완료될 때까지 약간의 지연 (100ms)
       await new Promise(resolve => setTimeout(resolve, 100))
+
+      // 방 참여 요청 전송 전에 방 정보 확인
+      try {
+        const roomInfo = await getStudyRoom(roomId)
+        const participants = await getStudyRoomMembers(roomId)
+        if (participants.length >= roomInfo.maxParticipants) {
+          // 이미 인원이 가득 찬 경우
+          ws.disconnect()
+          showErrorNotification("해당 스터디룸은 이미 인원이 가득 찼습니다.")
+          return { success: false, errorCode: "ROOM_CAPACITY_EXCEEDED" }
+        }
+      } catch (err) {
+        // 방 정보 조회 실패 시 계속 진행
+        console.warn("방 정보 조회 실패:", err)
+      }
 
       // 방 참여 요청 전송
       const enterRequest: EnterStudyRoomRequest = {
@@ -69,7 +87,20 @@ function RoomPageInner() {
       ws.disconnect()
 
       if (!memberInfo) {
+        // 응답을 받지 못한 경우, 다시 한 번 방 정보 확인
+        try {
+          const roomInfo = await getStudyRoom(roomId)
+          const participants = await getStudyRoomMembers(roomId)
+          if (participants.length >= roomInfo.maxParticipants) {
+            showErrorNotification("해당 스터디룸은 이미 인원이 가득 찼습니다.")
+            return { success: false, errorCode: "ROOM_CAPACITY_EXCEEDED" }
+          }
+        } catch (err) {
+          // 방 정보 조회 실패 시 일반 에러 메시지
+        }
+        
         console.warn("방 참여 응답을 받지 못했습니다")
+        showErrorNotification("방 참여에 실패했습니다. 다시 시도해주세요.")
         return { success: false }
       }
 
@@ -79,13 +110,23 @@ function RoomPageInner() {
 
       if (!updatedUser) {
         console.warn("방 참여 후에도 사용자를 찾을 수 없습니다")
+        showErrorNotification("방 참여에 실패했습니다. 다시 시도해주세요.")
         return { success: false }
       }
 
       return { success: true, role: updatedUser.role }
-    } catch (error) {
+    } catch (error: any) {
       ws.disconnect()
       console.error("방 참여 실패:", error)
+      
+      // 에러 메시지에서 에러 코드 확인
+      const errorMessage = error?.message || error?.toString() || ""
+      if (errorMessage.includes("ROOM_CAPACITY_EXCEEDED") || errorMessage.includes("인원이 가득") || error?.errorCode === "ROOM_CAPACITY_EXCEEDED") {
+        showErrorNotification("해당 스터디룸은 이미 인원이 가득 찼습니다.")
+        return { success: false, errorCode: "ROOM_CAPACITY_EXCEEDED" }
+      }
+      
+      showErrorNotification("방 참여에 실패했습니다. 다시 시도해주세요.")
       return { success: false }
     }
   }
