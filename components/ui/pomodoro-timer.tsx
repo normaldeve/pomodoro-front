@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react"
 import { Pause, Play, Check, X, Settings } from "lucide-react"
 import { TimerState } from "@/lib/websocket"
+import { useWakeLock } from "@/hooks/use-wake-lock"
 
 export interface PomodoroTimerProps {
   /**
@@ -428,6 +429,8 @@ export function PomodoroTimer({
     ? focusColors 
     : (isFinished ? finishedColors : currentPhase === 'BREAK' ? breakColors : focusColors)
 
+  useWakeLock(!isFinished && isRunning)
+
   // Generate tick marks
   const ticks = []
   for (let i = 0; i < 60; i++) {
@@ -715,4 +718,3 @@ export function PomodoroTimer({
     </div>
   )
 }
-

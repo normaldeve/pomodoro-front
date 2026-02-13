@@ -5,6 +5,7 @@ import { Pause, Play, Check, X, Settings } from "lucide-react"
 import { TimerState } from "@/lib/websocket"
 import { ThemedFlipDigit } from "./themed-flip-digit"
 import { cn } from "@/lib/utils"
+import { useWakeLock } from "@/hooks/use-wake-lock"
 
 // PomodoroTimer와 동일한 인터페이스
 export interface FlipTimerProps {
@@ -299,6 +300,8 @@ export function FlipTimer({
   const colors = isEditingNextFocus
     ? focusColors
     : (isFinished ? finishedColors : currentPhase === 'BREAK' ? breakColors : focusColors)
+
+  useWakeLock(!isFinished && isRunning)
 
   // 항상 초 단위까지 표시
   const formattedTime = formatTime(effectiveRemainingSeconds)
