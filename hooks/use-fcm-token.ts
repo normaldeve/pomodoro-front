@@ -69,8 +69,8 @@ export function useFcmToken(options: UseFcmTokenOptions = {}) {
 
       setStatus("getting_token")
 
-      // 4. Service Worker 등록
-      const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js")
+      // 4. Service Worker 등록 (PWA/FCM 공용 SW)
+      const registration = await navigator.serviceWorker.register("/sw.js")
       console.log("✅ Service Worker 등록:", registration.scope)
       
       // ✅ 추가: Service Worker 활성화 대기
@@ -81,7 +81,7 @@ export function useFcmToken(options: UseFcmTokenOptions = {}) {
       const messaging = await getFirebaseMessaging()
 
       if (!messaging) {
-        setError("Firebase Messaging을 초기화할 수 없습니다.")
+        setError("이 환경에서는 Firebase Push가 지원되지 않습니다. iOS는 홈 화면에 설치된 Safari PWA에서만 동작하며, 일부 모바일 브라우저/인앱 브라우저는 미지원입니다.")
         setStatus("error")
         return null
       }
