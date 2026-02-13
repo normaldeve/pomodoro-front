@@ -79,7 +79,9 @@ export const API_ENDPOINTS = {
   // 사용자 월별 공부 통계
   GET_MONTHLY_STUDY_STATS: `${API_BASE_URL}/api/stats/me/monthly`,
   // FCM 푸시 알림 토큰 등록
-  REGISTER_NOTIFICATION_TOKEN: `${API_BASE_URL}/api/notifications/token`,
+  REGISTER_NOTIFICATION_TOKEN: `${API_BASE_URL}/api/notifications/register-token`,
+  // FCM 푸시 알림 토큰 비활성화
+  DELETE_NOTIFICATION_TOKEN: `${API_BASE_URL}/api/notifications/delete-token`,
   // 계획 생성
   CREATE_PLAN: `${API_BASE_URL}/api/plans`,
   // 기간별 계획 조회
@@ -576,7 +578,7 @@ export async function registerNotificationToken(
 export async function unregisterNotificationToken(fcmToken: string): Promise<void> {
   // 실패해도 전체 로그아웃 흐름은 막지 않도록 try/catch 내부에서 처리
   try {
-    await apiRequest<void>(`${API_ENDPOINTS.REGISTER_NOTIFICATION_TOKEN}?fcmToken=${encodeURIComponent(fcmToken)}`, {
+    await apiRequest<void>(`${API_ENDPOINTS.DELETE_NOTIFICATION_TOKEN}?fcmToken=${encodeURIComponent(fcmToken)}`, {
       method: 'DELETE',
     })
   } catch (error) {
