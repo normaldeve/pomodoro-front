@@ -8,6 +8,7 @@ import { signup, login, ApiError, getCurrentUser, registerNotificationToken } fr
 import { showSuccessNotification, showErrorNotification } from "@/lib/system-notification"
 import dynamic from "next/dynamic"
 import { useFcmToken } from "@/hooks/use-fcm-token"
+import { Eye, EyeOff } from "lucide-react"
 
 const UserInfoDialog = dynamic(() => import("@/components/ui/user-info-dialog").then((mod) => mod.UserInfoDialog), {
   ssr: false,
@@ -34,6 +35,9 @@ function LoginPageInner() {
   const [password, setPassword] = useState("")
   const [nickname, setNickname] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [passwordMatch, setPasswordMatch] = useState<boolean | null>(null) // null: 초기, true: 일치, false: 불일치
   const [userIdError, setUserIdError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -146,10 +150,16 @@ function LoginPageInner() {
     }
   }
 
+  const normalizePasswordInput = (value: string) => {
+    // 한글(자모/완성형)은 제거하여 영문 입력 기반으로 유지
+    return value.replace(/[ㄱ-ㅎㅏ-ㅣ가-힣]/g, "")
+  }
+
   const handlePasswordChange = (value: string) => {
-    setPassword(value)
+    const normalized = normalizePasswordInput(value)
+    setPassword(normalized)
     if (confirmPassword) {
-      if (value === confirmPassword) {
+      if (normalized === confirmPassword) {
         setPasswordMatch(true)
       } else {
         setPasswordMatch(false)
@@ -160,9 +170,10 @@ function LoginPageInner() {
   }
 
   const handleConfirmPasswordChange = (value: string) => {
-    setConfirmPassword(value)
-    if (value && password) {
-      if (value === password) {
+    const normalized = normalizePasswordInput(value)
+    setConfirmPassword(normalized)
+    if (normalized && password) {
+      if (normalized === password) {
         setPasswordMatch(true)
       } else {
         setPasswordMatch(false)
@@ -349,22 +360,37 @@ function LoginPageInner() {
                   >
                     비밀번호
                   </label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="비밀번호를 입력하세요"
-                    value={password}
-                    onChange={(e) => handlePasswordChange(e.target.value)}
-                    required
-                    className="w-full font-medium"
-                    style={{
-                      borderColor: "rgba(255, 255, 255, 0.4)",
-                      background: "rgba(255, 255, 255, 0.3)",
-                      backdropFilter: "blur(10px)",
-                      color: colors.text,
-                      fontWeight: 500,
-                    }}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="signup-password"
+                      type={showSignUpPassword ? "text" : "password"}
+                      placeholder="비밀번호를 입력하세요"
+                      value={password}
+                      onChange={(e) => handlePasswordChange(e.target.value)}
+                      inputMode="text"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      lang="en"
+                      required
+                      className="w-full font-medium pr-10"
+                      style={{
+                        borderColor: "rgba(255, 255, 255, 0.4)",
+                        background: "rgba(255, 255, 255, 0.3)",
+                        backdropFilter: "blur(10px)",
+                        color: colors.text,
+                        fontWeight: 500,
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignUpPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[rgba(45,74,62,0.7)] hover:text-[rgba(45,74,62,0.95)]"
+                      aria-label={showSignUpPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                    >
+                      {showSignUpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -375,26 +401,41 @@ function LoginPageInner() {
                   >
                     비밀번호 확인
                   </label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="비밀번호를 다시 입력하세요"
-                    value={confirmPassword}
-                    onChange={(e) => handleConfirmPasswordChange(e.target.value)}
-                    onBlur={validatePassword}
-                    required
-                    className="w-full font-medium"
-                    style={{
-                      borderColor: 
-                        passwordMatch === true ? "#22c55e" : 
-                        passwordMatch === false ? "#ef4444" : 
-                        "rgba(255, 255, 255, 0.4)",
-                      background: "rgba(255, 255, 255, 0.3)",
-                      backdropFilter: "blur(10px)",
-                      color: colors.text,
-                      fontWeight: 500,
-                    }}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="비밀번호를 다시 입력하세요"
+                      value={confirmPassword}
+                      onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+                      onBlur={validatePassword}
+                      inputMode="text"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      lang="en"
+                      required
+                      className="w-full font-medium pr-10"
+                      style={{
+                        borderColor: 
+                          passwordMatch === true ? "#22c55e" : 
+                          passwordMatch === false ? "#ef4444" : 
+                          "rgba(255, 255, 255, 0.4)",
+                        background: "rgba(255, 255, 255, 0.3)",
+                        backdropFilter: "blur(10px)",
+                        color: colors.text,
+                        fontWeight: 500,
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[rgba(45,74,62,0.7)] hover:text-[rgba(45,74,62,0.95)]"
+                      aria-label={showConfirmPassword ? "비밀번호 확인 숨기기" : "비밀번호 확인 보기"}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <Button
@@ -433,22 +474,37 @@ function LoginPageInner() {
                 </div>
 
                 <div className="space-y-2">
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="비밀번호를 입력하세요"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="w-full font-medium"
-                    style={{
-                      borderColor: "rgba(255, 255, 255, 0.4)",
-                      background: "rgba(255, 255, 255, 0.3)",
-                      backdropFilter: "blur(10px)",
-                      color: colors.text,
-                      fontWeight: 500,
-                    }}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="비밀번호를 입력하세요"
+                      value={password}
+                      onChange={(e) => handlePasswordChange(e.target.value)}
+                      inputMode="text"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      lang="en"
+                      required
+                      className="w-full font-medium pr-10"
+                      style={{
+                        borderColor: "rgba(255, 255, 255, 0.4)",
+                        background: "rgba(255, 255, 255, 0.3)",
+                        backdropFilter: "blur(10px)",
+                        color: colors.text,
+                        fontWeight: 500,
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[rgba(45,74,62,0.7)] hover:text-[rgba(45,74,62,0.95)]"
+                      aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <Button

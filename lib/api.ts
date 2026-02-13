@@ -7,15 +7,21 @@ import { showErrorNotification } from './system-notification'
 import { setServerStatus, isNetworkError } from './server-status'
 
 // API 베이스 URL 설정
-// - 개발 환경 (localhost): 백엔드 직접 연결 (http://localhost:8080)
+// - NEXT_PUBLIC_API_BASE_URL이 있으면 우선 사용
+// - 개발 환경(localhost/127.0.0.1): 현재 호스트 기반으로 백엔드 직접 연결
 // - 운영 환경: 상대 경로 사용 (Nginx를 통해 라우팅)
 const getApiBaseUrl = (): string => {
+  const envBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
+  if (envBaseUrl) {
+    return envBaseUrl
+  }
+
   // 브라우저 환경에서 개발 환경 감지
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
     // localhost 또는 127.0.0.1이면 개발 환경
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:8080'
+      return `http://${hostname}:8080`
     }
   }
   
@@ -58,8 +64,6 @@ export const API_ENDPOINTS = {
   DELETE_GOAL: `${API_BASE_URL}/api/goals`,
   // 참여자 목록 조회
   GET_STUDY_ROOM_MEMBERS: `${API_BASE_URL}/api/study-room-members`,
-  // 오늘 방 집중 시간 조회
-  GET_TODAY_ROOM_FOCUS_TIME: `${API_BASE_URL}/api/study-room-members`,
   // 방장 권한 위임
   TRANSFER_HOST: `${API_BASE_URL}/api/study-room-members`,
   // 내가 마지막으로 참여한 방 정보 조회
@@ -76,6 +80,8 @@ export const API_ENDPOINTS = {
   GET_MY_STUDY_STATS: `${API_BASE_URL}/api/stats/me`,
   // 사용자 공부 통계 요약
   GET_STUDY_TIME_SUMMARY: `${API_BASE_URL}/api/stats/me/summary`,
+  // 사용자 오늘 공부 시간
+  GET_TODAY_STUDY_TIME: `${API_BASE_URL}/api/stats/me/today`,
   // 사용자 월별 공부 통계
   GET_MONTHLY_STUDY_STATS: `${API_BASE_URL}/api/stats/me/monthly`,
   // FCM 푸시 알림 토큰 등록
@@ -278,7 +284,7 @@ export async function apiRequest<T>(
   try {
     response = await fetch(url, {
       ...options,
-      credentials: options.credentials || 'include', // 기본적으로 쿠키 포함
+      credentials: options.credentials ?? 'include', // 기본적으로 쿠키 포함
       headers: {
         ...defaultHeaders,
         ...options.headers,
@@ -322,7 +328,7 @@ export async function apiRequest<T>(
       try {
         retryResponse = await fetch(url, {
           ...options,
-          credentials: options.credentials || 'include',
+          credentials: options.credentials ?? 'include',
           headers: retryHeaders,
         })
         // 재시도 요청이 성공하면 서버 연결 상태로 업데이트
@@ -899,16 +905,6 @@ export async function getParticipateRoomInfo(): Promise<ParticipateRoomInfo | nu
 }
 
 /**
- * 오늘 해당 방에서 내가 집중한 총 시간(분)을 조회하는 API
- * 백엔드는 분 단위(Integer)를 반환하므로, 프론트에서는 필요에 따라 변환해서 사용합니다.
- */
-export async function getTodayRoomFocusTime(roomId: string): Promise<number> {
-  return apiRequest<number>(`${API_ENDPOINTS.GET_TODAY_ROOM_FOCUS_TIME}/${roomId}/focus-time/total`, {
-    method: 'GET',
-  })
-}
-
-/**
  * 사용자 공부 히트맵 통계 API
  */
 export interface StudyHeatmapDayRecord {
@@ -942,10 +938,26 @@ export interface StudyTimeSummaryResponse {
 }
 
 /**
+ * 사용자 오늘 공부 시간 API
+ */
+export interface TodayStudyTimeResponse {
+  todayMinutes: number
+}
+
+/**
  * 내 공부 시간 요약 통계를 조회
  */
 export async function getStudyTimeSummary(): Promise<StudyTimeSummaryResponse> {
   return apiRequest<StudyTimeSummaryResponse>(API_ENDPOINTS.GET_STUDY_TIME_SUMMARY, {
+    method: 'GET',
+  })
+}
+
+/**
+ * 내 오늘 공부 시간을 조회
+ */
+export async function getTodayStudyTime(): Promise<TodayStudyTimeResponse> {
+  return apiRequest<TodayStudyTimeResponse>(API_ENDPOINTS.GET_TODAY_STUDY_TIME, {
     method: 'GET',
   })
 }

@@ -7,7 +7,7 @@ import { Reflection } from "@/components/ui/reflection"
 import {
   getRoomReflections,
   getMyRoomReflections,
-  getTodayRoomFocusTime,
+  getTodayStudyTime,
   ReflectionResponse,
   getPlansByDate,
   PlanResponse,
@@ -115,9 +115,9 @@ function SessionSummaryPageInner() {
       try {
         // 오늘 학습 시간 조회 (분 단위 → 초 단위로 변환)
         try {
-          const focusMinutes = await getTodayRoomFocusTime(roomId)
-          if (typeof focusMinutes === "number" && !Number.isNaN(focusMinutes)) {
-            setTodayStudyTime(focusMinutes * 60)
+          const response = await getTodayStudyTime()
+          if (typeof response.todayMinutes === "number" && !Number.isNaN(response.todayMinutes)) {
+            setTodayStudyTime(response.todayMinutes * 60)
           } else {
             setTodayStudyTime(0)
           }
