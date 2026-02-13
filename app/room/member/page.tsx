@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { getStudyRoomMembers, StudyRoomMemberResponse, getStudyRoom, getMessages, RoomMemberRole, getRoomReflections, ReflectionResponse, getCurrentUser } from "@/lib/api"
+import { getStudyRoomMembers, StudyRoomMemberResponse, getStudyRoom, getMessages, RoomMemberRole, getRoomReflections, getMyRoomReflections, ReflectionResponse, getCurrentUser } from "@/lib/api"
 import { getStatusText, getStatusColor } from "@/lib/utils"
 import { ParticipantsList } from "@/components/ui/participants-list"
 import { parseMessageTimestamp } from "@/lib/utils"
@@ -26,7 +26,7 @@ import { useStudyRoomWebSocket } from "@/hooks/use-study-room-websocket"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound-notification"
-import { Volume2, VolumeX, MessageSquare, Clock, BookOpen, Users, X, Plus, ChevronLeft, ChevronRight, Trash2, CheckCircle2 } from "lucide-react"
+import { Volume2, VolumeX, MessageSquare, Clock, BookOpen, Users, User, X, Plus, ChevronLeft, ChevronRight, Trash2, CheckCircle2 } from "lucide-react"
 import { format, addDays, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns"
 import { CustomScrollbar } from "@/components/ui/custom-scrollbar"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -96,6 +96,16 @@ function MemberRoomPageInner() {
     focusScore?: number | null
     sessionId?: number
   }>>([])
+  const [myRoomReflections, setMyRoomReflections] = useState<Array<{
+    id: number
+    authorName: string
+    authorAvatar?: string
+    content: string
+    images?: string[]
+    timestamp: Date
+    focusScore?: number | null
+    sessionId?: number
+  }>>([])
   const [currentLiveReflection, setCurrentLiveReflection] = useState<{
     reflectionId: number
     sessionId: number
@@ -106,6 +116,7 @@ function MemberRoomPageInner() {
     imageUrl: string | null
     createdAt: Date
   } | null>(null)
+  const [showOnlyMyReflections, setShowOnlyMyReflections] = useState(false)
   const [isHostTransferredDialogOpen, setIsHostTransferredDialogOpen] = useState(false)
   const [hostTransferredMessage, setHostTransferredMessage] = useState<string>("")
   const [activeTab, setActiveTab] = useState<"timer" | "reflection">("timer")
@@ -930,7 +941,10 @@ function MemberRoomPageInner() {
     if (!roomInfo?.roomId) return
 
     try {
-      const reflections = await getRoomReflections(roomInfo.roomId)
+      const [reflections, myReflections] = await Promise.all([
+        getRoomReflections(roomInfo.roomId),
+        getMyRoomReflections(roomInfo.roomId),
+      ])
       // ReflectionResponse를 Reflection 컴포넌트 형식으로 변환
       const convertedReflections = reflections.map((reflection: ReflectionResponse) => ({
         id: reflection.reflectionId,
@@ -945,6 +959,19 @@ function MemberRoomPageInner() {
       // 최신 순으로 정렬
       convertedReflections.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       setInitialReflections(convertedReflections)
+
+      const convertedMyReflections = myReflections.map((reflection: ReflectionResponse) => ({
+        id: reflection.reflectionId,
+        authorName: reflection.nickname,
+        authorAvatar: reflection.userProfileUrl || undefined,
+        content: reflection.content,
+        images: reflection.imageUrl ? [reflection.imageUrl] : [],
+        timestamp: new Date(reflection.createdAt),
+        focusScore: reflection.focusScore,
+        sessionId: reflection.sessionId,
+      }))
+      convertedMyReflections.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      setMyRoomReflections(convertedMyReflections)
       
       // 이미 로드된 회고 ID들을 processedReflectionIds에 추가 (웹소켓 중복 방지)
       setProcessedReflectionIds((prev) => {
@@ -957,6 +984,7 @@ function MemberRoomPageInner() {
     } catch (error) {
       console.error("회고 목록 로드 실패:", error)
       setInitialReflections([])
+      setMyRoomReflections([])
     }
   }
 
@@ -1168,6 +1196,17 @@ function MemberRoomPageInner() {
       setCurrentLiveReflection(null)
     }
   }, [reflectionData, processedReflectionIds])
+
+  // "내가 작성한 회고" 필터가 켜진 상태에서도 웹소켓 큐 정체를 막기 위해 백그라운드 처리
+  useEffect(() => {
+    if (!showOnlyMyReflections || !currentLiveReflection) return
+    setProcessedReflectionIds((prev) => {
+      const next = new Set(prev)
+      next.add(currentLiveReflection.reflectionId)
+      return next
+    })
+    removeReflectionData(currentLiveReflection.reflectionId)
+  }, [showOnlyMyReflections, currentLiveReflection, removeReflectionData])
 
   const handleReflectionSubmit = (content: string, images: string[], rating: number | null, isPrivate: boolean) => {
     if (!roomInfo || !currentUser) return
@@ -1722,9 +1761,30 @@ function MemberRoomPageInner() {
             <div className="w-full h-[calc(100vh-280px)] min-h-[500px] flex flex-col">
               <div className="flex-1 min-h-0">
                 <Reflection
-                  initialReflections={initialReflections}
-                  liveReflection={currentLiveReflection}
-                  descriptionText="같은 방에서 함께 공부하는 사람들의 회고를 한눈에 볼 수 있어요."
+                  titleText={showOnlyMyReflections ? "내가 작성한 회고" : "같이 공부하는 사람들의 회고"}
+                  initialReflections={showOnlyMyReflections ? myRoomReflections : initialReflections}
+                  liveReflection={showOnlyMyReflections ? null : currentLiveReflection}
+                  descriptionText={
+                    showOnlyMyReflections
+                      ? "이 방에서 내가 작성한 회고를 모아볼 수 있어요."
+                      : "같은 방에서 함께 공부하는 사람들의 회고를 한눈에 볼 수 있어요."
+                  }
+                  headerRightAction={
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-3 text-xs bg-white/70 border-black/10 text-[#2c5f2d] hover:bg-white hover:text-[#2c5f2d]"
+                      onClick={() => setShowOnlyMyReflections((prev) => !prev)}
+                    >
+                      {showOnlyMyReflections ? (
+                        <Users className="w-3.5 h-3.5 mr-1" />
+                      ) : (
+                        <User className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      {showOnlyMyReflections ? "전체 회고" : "내가 작성한 회고"}
+                    </Button>
+                  }
                   onReflectionProcessed={() => {
                     if (currentLiveReflection) {
                       // 처리 완료된 ID 기록

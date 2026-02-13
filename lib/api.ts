@@ -1058,6 +1058,7 @@ export interface ReflectionResponse {
   userProfileUrl: string | null
   focusScore: number | null
   imageUrl: string | null
+  isPrivate: boolean | null
   createdAt: string
 }
 
@@ -1066,6 +1067,15 @@ export interface ReflectionResponse {
  */
 export async function getRoomReflections(roomId: string): Promise<ReflectionResponse[]> {
   return apiRequest<ReflectionResponse[]>(`${API_ENDPOINTS.GET_ROOM_REFLECTIONS}/${roomId}`, {
+    method: 'GET',
+  })
+}
+
+/**
+ * 특정 방에서 내가 작성한 회고 목록 조회 API
+ */
+export async function getMyRoomReflections(roomId: string): Promise<ReflectionResponse[]> {
+  return apiRequest<ReflectionResponse[]>(`${API_ENDPOINTS.GET_ROOM_REFLECTIONS}/${roomId}/my`, {
     method: 'GET',
   })
 }

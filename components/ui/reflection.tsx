@@ -50,6 +50,18 @@ export interface ReflectionProps {
    * 헤더 아래 안내 문구
    */
   descriptionText?: string
+  /**
+   * 헤더 제목 (기본값: 회고)
+   */
+  titleText?: string
+  /**
+   * 헤더 표시 여부 (기본값: true)
+   */
+  showHeader?: boolean
+  /**
+   * 헤더 우측 액션 영역
+   */
+  headerRightAction?: React.ReactNode
 }
 
 const colors = {
@@ -69,6 +81,9 @@ export function Reflection({
   onReflectionProcessed,
   showBorder = true,
   descriptionText,
+  titleText = "회고",
+  showHeader = true,
+  headerRightAction,
 }: ReflectionProps) {
   const [reflections, setReflections] = useState<Reflection[]>(initialReflections)
   const processedReflectionIdsRef = useRef<Set<number>>(new Set())
@@ -199,33 +214,38 @@ export function Reflection({
       className={`flex flex-col rounded-3xl w-full h-full bg-gradient-to-br from-white/70 via-white/45 to-white/25 backdrop-blur-3xl shadow-[0_24px_80px_rgba(0,0,0,0.16)] ${showBorder ? 'border-2 border-[#2c5f2d]' : ''}`}
     >
       {/* Header */}
-      <div
-        className="px-6 py-4 border-b"
-        style={{
-          borderColor: "rgba(255, 255, 255, 0.2)",
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{
-              background: colors.main,
-              boxShadow: `0 0 10px ${colors.shadow}`,
-            }}
-          />
-          <span
-            className="text-lg font-medium font-sans"
-            style={{ color: colors.headerText }}
-          >
-            회고
-          </span>
+      {showHeader && (
+        <div
+          className="px-6 py-4 border-b"
+          style={{
+            borderColor: "rgba(255, 255, 255, 0.2)",
+          }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{
+                  background: colors.main,
+                  boxShadow: `0 0 10px ${colors.shadow}`,
+                }}
+              />
+              <span
+                className="text-lg font-medium font-sans"
+                style={{ color: colors.headerText }}
+              >
+                {titleText}
+              </span>
+            </div>
+            {headerRightAction}
+          </div>
+          {descriptionText && (
+            <p className="mt-2 text-xs" style={{ color: colors.headerSubText }}>
+              {descriptionText}
+            </p>
+          )}
         </div>
-        {descriptionText && (
-          <p className="mt-2 text-xs" style={{ color: colors.headerSubText }}>
-            {descriptionText}
-          </p>
-        )}
-      </div>
+      )}
 
       {/* Reflections List */}
       <CustomScrollbar className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0 max-h-full">

@@ -6,6 +6,7 @@ import { CheckCircle2, Circle, Clock, Home } from "lucide-react"
 import { Reflection } from "@/components/ui/reflection"
 import {
   getRoomReflections,
+  getMyRoomReflections,
   getTodayRoomFocusTime,
   ReflectionResponse,
   getPlansByDate,
@@ -57,6 +58,16 @@ function SessionSummaryPageInner() {
   const [showSection4, setShowSection4] = useState(false)
   const [goals, setGoals] = useState<Goal[]>([])
   const [reflections, setReflections] = useState<Array<{
+    id: number
+    authorName: string
+    authorAvatar?: string
+    content: string
+    images?: string[]
+    timestamp: Date
+    focusScore?: number | null
+    sessionId?: number
+  }>>([])
+  const [myReflections, setMyReflections] = useState<Array<{
     id: number
     authorName: string
     authorAvatar?: string
@@ -148,8 +159,11 @@ function SessionSummaryPageInner() {
         }))
         setGoals(formattedGoals)
 
-        // 회고 조회
-        const reflectionsData = await getRoomReflections(roomId)
+        // 회고 조회 (방 전체 + 내가 작성한 회고)
+        const [reflectionsData, myReflectionsData] = await Promise.all([
+          getRoomReflections(roomId),
+          getMyRoomReflections(roomId),
+        ])
         const formattedReflections = reflectionsData.map((reflection: ReflectionResponse) => ({
           id: reflection.reflectionId,
           authorName: reflection.nickname,
@@ -160,7 +174,21 @@ function SessionSummaryPageInner() {
           focusScore: reflection.focusScore,
           sessionId: reflection.sessionId,
         }))
+        formattedReflections.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
         setReflections(formattedReflections)
+
+        const formattedMyReflections = myReflectionsData.map((reflection: ReflectionResponse) => ({
+          id: reflection.reflectionId,
+          authorName: reflection.nickname,
+          authorAvatar: reflection.userProfileUrl || undefined,
+          content: reflection.content,
+          images: reflection.imageUrl ? [reflection.imageUrl] : [],
+          timestamp: new Date(reflection.createdAt),
+          focusScore: reflection.focusScore,
+          sessionId: reflection.sessionId,
+        }))
+        formattedMyReflections.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+        setMyReflections(formattedMyReflections)
       } catch (error) {
         console.error('데이터 로딩 실패:', error)
       } finally {
@@ -423,7 +451,36 @@ function SessionSummaryPageInner() {
                 </div>
               </div>
             ) : (
-              <Reflection initialReflections={reflections} showBorder={false} />
+              <Reflection initialReflections={reflections} showBorder={false} showHeader={false} />
+            )}
+          </div>
+        </section>
+
+        {/* 내 회고 */}
+        <section
+          className="mb-4 transition-all duration-700 ease-out"
+          style={{
+            opacity: showSection3 ? 1 : 0,
+            transform: showSection3 ? "translateY(0)" : "translateY(20px)",
+          }}
+        >
+          <div className="mb-4">
+            <h2 className="text-base font-semibold font-sans" style={{ color: colors.text }}>
+              내가 이 방에서 작성한 회고
+            </h2>
+            <p className="text-xs font-sans mt-1" style={{ color: colors.textLight }}>
+              이 방에서 작성한 내 회고를 확인해보세요
+            </p>
+          </div>
+          <div className="h-[28rem]">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-xs font-sans" style={{ color: colors.textLight }}>
+                  로딩 중...
+                </div>
+              </div>
+            ) : (
+              <Reflection initialReflections={myReflections} showBorder={false} showHeader={false} />
             )}
           </div>
         </section>
@@ -474,4 +531,3 @@ export default function SessionSummaryPage() {
     </Suspense>
   )
 }
-
