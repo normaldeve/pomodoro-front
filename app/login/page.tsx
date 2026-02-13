@@ -4,9 +4,10 @@ import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { signup, login, ApiError, getCurrentUser } from "@/lib/api"
+import { signup, login, ApiError, getCurrentUser, registerNotificationToken } from "@/lib/api"
 import { showSuccessNotification, showErrorNotification } from "@/lib/system-notification"
 import dynamic from "next/dynamic"
+import { useFcmToken } from "@/hooks/use-fcm-token"
 
 const UserInfoDialog = dynamic(() => import("@/components/ui/user-info-dialog").then((mod) => mod.UserInfoDialog), {
   ssr: false,
@@ -41,6 +42,7 @@ function LoginPageInner() {
   const [user, setUser] = useState<{ id: number; username: string; nickname: string; profileUrl: string | null; role: string } | null>(null)
   const [isUserInfoDialogOpen, setIsUserInfoDialogOpen] = useState(false)
   const [isUserStudyDialogOpen, setIsUserStudyDialogOpen] = useState(false)
+  const { requestPermissionAndGetToken } = useFcmToken()
 
   // 로그인 상태 확인
   useEffect(() => {
@@ -101,6 +103,19 @@ function LoginPageInner() {
         setIsLoggedIn(true)
       } catch (error) {
         console.error("Failed to load current user after login:", error)
+      }
+
+      // 로그인 성공 후 FCM 토큰 발급 및 백엔드 등록 (실패해도 로그인 흐름은 유지)
+      try {
+        const fcmToken = await requestPermissionAndGetToken()
+        if (fcmToken) {
+          await registerNotificationToken({
+            fcmToken,
+            deviceType: "WEB",
+          })
+        }
+      } catch (error) {
+        console.error("Failed to register FCM token after login:", error)
       }
 
       // 로그인 성공 후 roomId가 있으면 해당 방으로 이동, 없으면 홈으로

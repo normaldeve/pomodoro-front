@@ -8,7 +8,12 @@ import { PwaClient } from "@/components/pwa-client"
 // Toaster를 동적 import로 지연 로딩하여 초기 번들 크기 감소
 // Toaster는 Client Component이므로 동적 import만으로도 충분히 지연 로딩됨
 const Toaster = dynamic(() => import("@/components/ui/toaster").then((mod) => mod.Toaster))
-const ServerStatusOverlay = dynamic(() => import("@/components/server-status-overlay").then((mod) => mod.ServerStatusOverlay))
+const ServerStatusOverlay = dynamic(() =>
+  import("@/components/server-status-overlay").then((mod) => mod.ServerStatusOverlay)
+)
+const FcmForegroundListener = dynamic(() =>
+  import("@/components/fcm-foreground-listener").then((mod) => mod.FcmForegroundListener),
+)
 
 const inter = Inter({
   subsets: ["latin"],
@@ -46,6 +51,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} antialiased`}>
       <body className="font-sans">
         <PwaClient />
+        <FcmForegroundListener />
         {children}
         <Toaster />
         <ServerStatusOverlay />

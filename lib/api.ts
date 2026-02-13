@@ -78,6 +78,8 @@ export const API_ENDPOINTS = {
   GET_STUDY_TIME_SUMMARY: `${API_BASE_URL}/api/stats/me/summary`,
   // 사용자 월별 공부 통계
   GET_MONTHLY_STUDY_STATS: `${API_BASE_URL}/api/stats/me/monthly`,
+  // FCM 푸시 알림 토큰 등록
+  REGISTER_NOTIFICATION_TOKEN: `${API_BASE_URL}/api/notifications/token`,
   // 계획 생성
   CREATE_PLAN: `${API_BASE_URL}/api/plans`,
   // 기간별 계획 조회
@@ -224,6 +226,18 @@ async function refreshAccessToken(): Promise<string> {
  */
 async function logout(): Promise<void> {
   try {
+    // 먼저 FCM 토큰이 있으면 비활성화 요청 (실패해도 무시)
+    try {
+      if (typeof window !== 'undefined') {
+        const fcmToken = localStorage.getItem('fcmToken')
+        if (fcmToken) {
+          await unregisterNotificationToken(fcmToken)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to unregister FCM token on logout:', error)
+    }
+
     await fetch(API_ENDPOINTS.LOGOUT, {
       method: 'POST',
       credentials: 'include',
@@ -234,6 +248,7 @@ async function logout(): Promise<void> {
     // localStorage 정리
     localStorage.removeItem('accessToken')
     localStorage.removeItem('user')
+    localStorage.removeItem('fcmToken')
     // 페이지 새로고침하여 로그인 상태로 리셋
     window.location.href = '/'
   }
@@ -534,6 +549,39 @@ export async function login(data: LoginRequest): Promise<TokenResponse> {
     body: JSON.stringify(data),
     credentials: 'include', // 쿠키를 포함하여 요청
   }, false)
+}
+
+/**
+ * 푸시 알림용 FCM 토큰 등록 API
+ */
+export type DeviceType = 'WEB' | 'IOS' | 'ANDROID'
+
+export interface RegisterNotificationTokenRequest {
+  fcmToken: string
+  deviceType: DeviceType
+}
+
+export async function registerNotificationToken(
+  data: RegisterNotificationTokenRequest
+): Promise<void> {
+  return apiRequest<void>(API_ENDPOINTS.REGISTER_NOTIFICATION_TOKEN, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * 푸시 알림용 FCM 토큰 비활성화 API
+ */
+export async function unregisterNotificationToken(fcmToken: string): Promise<void> {
+  // 실패해도 전체 로그아웃 흐름은 막지 않도록 try/catch 내부에서 처리
+  try {
+    await apiRequest<void>(`${API_ENDPOINTS.REGISTER_NOTIFICATION_TOKEN}?fcmToken=${encodeURIComponent(fcmToken)}`, {
+      method: 'DELETE',
+    })
+  } catch (error) {
+    console.error('Failed to unregister notification token:', error)
+  }
 }
 
 /**
