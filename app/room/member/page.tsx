@@ -150,6 +150,7 @@ function MemberRoomPageInner() {
   const endTimePickerRef = useRef<HTMLDivElement>(null)
   const datePickerRef = useRef<HTMLDivElement>(null)
   const weekViewScrollRef = useRef<HTMLDivElement>(null)
+  const hasAutoScrolledToCurrentTimeRef = useRef(false)
   
   // 수정용 state
   const [editEventTitle, setEditEventTitle] = useState("")
@@ -356,6 +357,33 @@ function MemberRoomPageInner() {
   const handleEditEndTimeChange = (hour: number, minute: number) => {
     setEditEventEndTime(formatTime(hour, minute))
   }
+
+  const scrollWeekViewToCurrentTime = () => {
+    const scrollContainer = weekViewScrollRef.current
+    if (!scrollContainer) return
+
+    const now = new Date()
+    const hours = now.getHours()
+    const minutes = now.getMinutes()
+    const currentTime = hours + minutes / 60
+
+    const scrollPosition = currentTime * 80 - 100
+    const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight
+    const finalScrollPosition = Math.min(Math.max(0, scrollPosition), maxScroll)
+
+    scrollContainer.scrollTop = finalScrollPosition
+  }
+
+  useEffect(() => {
+    if (!roomInfo?.roomId || hasAutoScrolledToCurrentTimeRef.current) return
+
+    const frameId = requestAnimationFrame(() => {
+      scrollWeekViewToCurrentTime()
+      hasAutoScrolledToCurrentTimeRef.current = true
+    })
+
+    return () => cancelAnimationFrame(frameId)
+  }, [roomInfo?.roomId])
 
   // 수정용 시간 파싱
   const editStartTime = parseTime(editEventStartTime)
@@ -1315,21 +1343,7 @@ function MemberRoomPageInner() {
                   {/* 현재 시간으로 이동 버튼 - + 버튼 위 */}
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!weekViewScrollRef.current) return
-                      
-                      const now = new Date()
-                      const hours = now.getHours()
-                      const minutes = now.getMinutes()
-                      const currentTime = hours + minutes / 60
-                      
-                      const scrollPosition = currentTime * 80 - 100
-                      const scrollContainer = weekViewScrollRef.current
-                      const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight
-                      const finalScrollPosition = Math.min(Math.max(0, scrollPosition), maxScroll)
-                      
-                      scrollContainer.scrollTop = finalScrollPosition
-                    }}
+                    onClick={scrollWeekViewToCurrentTime}
                     className="absolute bottom-16 right-4 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-gray-500 text-white shadow-lg hover:bg-gray-600 transition-all cursor-pointer"
                     aria-label="현재 시간으로 이동"
                   >
@@ -2430,4 +2444,3 @@ export default function MemberRoomPage() {
     </Suspense>
   )
 }
-
