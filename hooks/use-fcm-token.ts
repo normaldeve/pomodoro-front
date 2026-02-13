@@ -31,6 +31,29 @@ export function useFcmToken(options: UseFcmTokenOptions = {}) {
   // onMessage 리스너 중복 방지를 위한 ref
   const unsubscribeRef = useRef<Unsubscribe | null>(null)
 
+  const waitForSwActivation = useCallback(async (registration: ServiceWorkerRegistration) => {
+    if (registration.active) {
+      return
+    }
+
+    await new Promise<void>((resolve) => {
+      const worker = registration.installing ?? registration.waiting
+      if (!worker) {
+        resolve()
+        return
+      }
+
+      const onStateChange = () => {
+        if (worker.state === "activated") {
+          worker.removeEventListener("statechange", onStateChange)
+          resolve()
+        }
+      }
+
+      worker.addEventListener("statechange", onStateChange)
+    })
+  }, [])
+
   const requestPermissionAndGetToken = useCallback(async () => {
     try {
       setError(null)
@@ -69,12 +92,29 @@ export function useFcmToken(options: UseFcmTokenOptions = {}) {
 
       setStatus("getting_token")
 
-      // 4. Service Worker 등록 (PWA/FCM 공용 SW)
-      const registration = await navigator.serviceWorker.register("/sw.js")
+      // 4. FCM 전용 Service Worker 등록 (PWA SW와 scope 분리)
+      const registrations = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(
+        registrations
+          .filter((reg) => {
+            const isFcmSw = reg.active?.scriptURL.includes("/firebase-messaging-sw.js")
+            if (!isFcmSw) return false
+            try {
+              return new URL(reg.scope).pathname === "/"
+            } catch {
+              return false
+            }
+          })
+          .map((reg) => reg.unregister())
+      )
+
+      const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
+        scope: "/firebase-cloud-messaging-push-scope",
+      })
       console.log("✅ Service Worker 등록:", registration.scope)
       
-      // ✅ 추가: Service Worker 활성화 대기
-      await navigator.serviceWorker.ready
+      // FCM SW 활성화 대기
+      await waitForSwActivation(registration)
       console.log("✅ Service Worker 활성화 완료")
 
       // 5. Firebase Messaging 초기화
@@ -151,7 +191,7 @@ export function useFcmToken(options: UseFcmTokenOptions = {}) {
       setStatus("error")
       return null
     }
-  }, [options])
+  }, [options, waitForSwActivation])
 
   // ✅ 자동 실행 옵션
   useEffect(() => {
