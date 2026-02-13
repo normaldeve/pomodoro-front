@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 interface Banner {
   src: string
   alt: string
+  href?: string
 }
 
 interface BannerCarouselProps {
@@ -16,9 +18,10 @@ interface BannerCarouselProps {
 }
 
 const defaultDesktopBanners: Banner[] = [
-  { src: "/banners/banner_main.png", alt: "배너 1" },
-  { src: "/banners/banner_new_year.png", alt: "배너 2" },
-  { src: "/banners/banner_focus.png", alt: "배너 3" },
+  { src: "/banners/banner_mobile_info.png", alt: "모바일 앱 설치 안내", href: "/pwa-install" },
+  { src: "/banners/banner_main.png", alt: "배너 2" },
+  { src: "/banners/banner_new_year.png", alt: "배너 3" },
+  { src: "/banners/banner_focus.png", alt: "배너 4" },
 ]
 
 const defaultMobileBanners: Banner[] = [
@@ -72,14 +75,27 @@ export function BannerCarousel({
       >
         {banners.map((banner, index) => (
           <div key={index} className="w-full h-full flex-shrink-0">
-            <Image
-              src={banner.src}
-              alt={banner.alt}
-              width={1080}
-              height={360}
-              className={isMobile ? "w-full h-full object-cover" : "w-full h-full object-contain"}
-              priority={index === 0}
-            />
+            {banner.href ? (
+              <Link href={banner.href} className="block w-full h-full">
+                <Image
+                  src={banner.src}
+                  alt={banner.alt}
+                  width={1080}
+                  height={360}
+                  className={isMobile ? "w-full h-full object-cover" : "w-full h-full object-contain"}
+                  priority={index === 0}
+                />
+              </Link>
+            ) : (
+              <Image
+                src={banner.src}
+                alt={banner.alt}
+                width={1080}
+                height={360}
+                className={isMobile ? "w-full h-full object-cover" : "w-full h-full object-contain"}
+                priority={index === 0}
+              />
+            )}
           </div>
         ))}
       </div>

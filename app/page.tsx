@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, Suspense, useCallback } from "react"
-import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -37,7 +37,6 @@ import { Switch } from "@/components/ui/switch"
 import { logoutApi, createStudyRoom, ApiError, getStudyRooms, StudyRoomListResponse, StudyRoomStatus, TimerType, getCurrentUser, getParticipateRoomInfo, getPermanentRooms, StudyRoomResponse } from "@/lib/api"
 import { showSuccessNotification } from "@/lib/system-notification"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
-import { useIsMobile } from "@/hooks/use-mobile"
 
 // 큰 컴포넌트들을 동적 import로 지연 로딩하여 초기 번들 크기 감소
 const UserInfoDialog = dynamic(() => import("@/components/ui/user-info-dialog").then((mod) => mod.UserInfoDialog), {
@@ -124,9 +123,7 @@ function mapStudyRoomResponseToStudyRoom(response: StudyRoomResponse): StudyRoom
 
 function HomePageInner() {
   const router = useRouter()
-  const pathname = usePathname()
   const searchParams = useSearchParams()
-  const isMobile = useIsMobile()
   const [isLoggedIn, setIsLoggedIn] = useState(false) // 로그인 상태 관리
   const [user, setUser] = useState<{ id: number; username: string; nickname: string; profileUrl: string | null; role: string } | null>(null) // 사용자 정보
   const [isUserInfoDialogOpen, setIsUserInfoDialogOpen] = useState(false) // 내 정보 다이얼로그 상태
@@ -287,6 +284,11 @@ function HomePageInner() {
     }
   }, [currentPage])
 
+  const refreshRoomLists = useCallback(() => {
+    void fetchPermanentRooms()
+    void fetchStudyRooms()
+  }, [fetchPermanentRooms, fetchStudyRooms])
+
   // 초기 로드 시 상시 운영 방 조회
   useEffect(() => {
     fetchPermanentRooms()
@@ -297,79 +299,58 @@ function HomePageInner() {
     fetchStudyRooms()
   }, [fetchStudyRooms])
 
-  // 주기적으로 상시 운영 방 자동 갱신 (30초마다)
+  // 페이지 visibility/focus 기반 자동 갱신 + 폴링 통합
   useEffect(() => {
-    // 페이지가 보이지 않으면 폴링하지 않음
-    if (document.hidden) return
+    let intervalId: ReturnType<typeof setInterval> | null = null
 
-    const interval = setInterval(() => {
-      fetchPermanentRooms()
-    }, 30000) // 30초마다 갱신
+    const startPolling = () => {
+      if (intervalId || document.hidden) return
+      intervalId = setInterval(() => {
+        refreshRoomLists()
+      }, 30000)
+    }
 
-    return () => clearInterval(interval)
-  }, [fetchPermanentRooms])
+    const stopPolling = () => {
+      if (!intervalId) return
+      clearInterval(intervalId)
+      intervalId = null
+    }
 
-  // 주기적으로 방 목록 자동 갱신 (30초마다)
-  useEffect(() => {
-    // 페이지가 보이지 않으면 폴링하지 않음
-    if (document.hidden) return
-
-    const interval = setInterval(() => {
-      fetchStudyRooms()
-    }, 30000) // 30초마다 갱신
-
-    return () => clearInterval(interval)
-  }, [fetchStudyRooms])
-
-  // 페이지 포커스 시 상시 운영 방 자동 갱신
-  useEffect(() => {
     const handleVisibilityChange = () => {
-      // 페이지가 다시 보이게 되면 상시 운영 방 목록 갱신
       if (!document.hidden) {
-        fetchPermanentRooms()
+        refreshRoomLists()
+        startPolling()
+      } else {
+        stopPolling()
       }
     }
 
     const handleFocus = () => {
-      fetchPermanentRooms()
+      refreshRoomLists()
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange)
     window.addEventListener("focus", handleFocus)
+    startPolling()
 
     return () => {
+      stopPolling()
       document.removeEventListener("visibilitychange", handleVisibilityChange)
       window.removeEventListener("focus", handleFocus)
     }
-  }, [fetchPermanentRooms])
-
-  // 페이지 포커스 시 방 목록 자동 갱신
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      // 페이지가 다시 보이게 되면 방 목록 갱신
-      if (!document.hidden) {
-        fetchStudyRooms()
-      }
-    }
-
-    const handleFocus = () => {
-      fetchStudyRooms()
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-    window.addEventListener("focus", handleFocus)
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange)
-      window.removeEventListener("focus", handleFocus)
-    }
-  }, [fetchStudyRooms])
+  }, [refreshRoomLists])
 
   // 로딩 애니메이션 효과
   useEffect(() => {
     setIsLoaded(true)
-    setTimeout(() => setShowHeader(true), 100)
-    setTimeout(() => setShowRooms(true), 300)
+
+    const headerTimer = setTimeout(() => setShowHeader(true), 100)
+    const roomsTimer = setTimeout(() => setShowRooms(true), 300)
+
+    return () => {
+      clearTimeout(headerTimer)
+      clearTimeout(roomsTimer)
+    }
   }, [])
 
 

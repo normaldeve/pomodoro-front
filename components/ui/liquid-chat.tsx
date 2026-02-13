@@ -63,7 +63,7 @@ export function LiquidChat({
   isLoadingMore = false,
   isInitialLoadComplete = false,
 }: LiquidChatProps) {
-  const [messages, setMessages] = useState<LiquidChatMessage[]>(externalMessages)
+  const messages = externalMessages
   const [inputValue, setInputValue] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollPositionRef = useRef<number>(0)
@@ -134,11 +134,6 @@ export function LiquidChat({
       window.removeEventListener("scroll", handleScroll)
     }
   }, [])
-
-  // 외부에서 받은 메시지 배열이 변경되면 업데이트
-  useEffect(() => {
-    setMessages(externalMessages)
-  }, [externalMessages])
 
   // 초기 로드 완료 시 스크롤을 맨 아래로 이동
   useEffect(() => {
@@ -445,4 +440,3 @@ export function LiquidChat({
     </div>
   )
 }
-

@@ -30,6 +30,8 @@ export function useStudyRoomWebSocket(roomId: string | null) {
   const isFirstFocusTickRef = useRef<boolean>(false)
   const currentSessionRef = useRef<number | null>(null)
   const totalSessionsRef = useRef<number | null>(null)
+  const chatMessageIdSetRef = useRef<Set<number>>(new Set())
+  const reflectionIdSetRef = useRef<Set<number>>(new Set())
   
   // 콜백을 ref로 관리하여 최신 함수 참조 보장
   const handleDialDragMessageRef = useRef<(message: DialDragMessage) => void | undefined>(undefined)
@@ -132,15 +134,12 @@ export function useStudyRoomWebSocket(roomId: string | null) {
 
   // 채팅 메시지 수신 콜백
   const handleChatMessage = useCallback((chatMessage: MessageResponse) => {
-    // 채팅 메시지 처리 - 배열에 누적 (중복 방지)
-    setChatMessages((prev) => {
-      // 이미 같은 ID의 메시지가 있는지 확인
-      const exists = prev.some((msg) => msg.messageId === chatMessage.messageId)
-      if (exists) {
-        return prev
-      }
-      return [...prev, chatMessage]
-    })
+    if (chatMessageIdSetRef.current.has(chatMessage.messageId)) {
+      return
+    }
+
+    chatMessageIdSetRef.current.add(chatMessage.messageId)
+    setChatMessages((prev) => [...prev, chatMessage])
   }, [])
   
   handleChatMessageRef.current = handleChatMessage
@@ -171,18 +170,17 @@ export function useStudyRoomWebSocket(roomId: string | null) {
 
   // 실제 회고 데이터 처리 (배열에 추가)
   const handleReflectionData = useCallback((event: ReflectionEvent) => {
-    setReflectionData((prev) => {
-      // 중복 방지: 이미 같은 reflectionId가 있는지 확인
-      const exists = prev.some((r) => r.reflectionId === event.reflectionId)
-      if (exists) {
-        return prev
-      }
-      return [...prev, event]
-    })
+    if (reflectionIdSetRef.current.has(event.reflectionId)) {
+      return
+    }
+
+    reflectionIdSetRef.current.add(event.reflectionId)
+    setReflectionData((prev) => [...prev, event])
   }, [])
 
   // reflectionData에서 특정 항목 제거 함수
   const removeReflectionData = useCallback((reflectionId: number) => {
+    reflectionIdSetRef.current.delete(reflectionId)
     setReflectionData((prev) => prev.filter((r) => r.reflectionId !== reflectionId))
   }, [])
 
@@ -240,10 +238,17 @@ export function useStudyRoomWebSocket(roomId: string | null) {
   // WebSocket 연결
   useEffect(() => {
     if (!roomId) {
-      // roomId가 없으면 메시지 배열 초기화
+      // roomId가 없으면 메시지/중복 캐시 초기화
+      chatMessageIdSetRef.current.clear()
+      reflectionIdSetRef.current.clear()
       setChatMessages([])
+      setReflectionData([])
       return
     }
+
+    // 다른 roomId로 이동 시 이전 방의 중복 캐시 초기화
+    chatMessageIdSetRef.current.clear()
+    reflectionIdSetRef.current.clear()
 
     // 기존 연결이 있으면 해제
     if (wsRef.current) {
