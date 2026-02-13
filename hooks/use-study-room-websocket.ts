@@ -400,6 +400,7 @@ export function useStudyRoomWebSocket(roomId: string | null) {
       content: string
       focusScore: number | null
       imageUrl: string | null
+      isPrivate: boolean
     }
   ) => {
     if (!wsRef.current || !roomId) return

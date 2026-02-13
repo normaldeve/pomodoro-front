@@ -46,13 +46,19 @@ export interface ReflectionProps {
    * 테두리 표시 여부 (기본값: true)
    */
   showBorder?: boolean
+  /**
+   * 헤더 아래 안내 문구
+   */
+  descriptionText?: string
 }
 
 const colors = {
   // 시스템 primary 그린 팔레트
   main: "#2c5f2d",
-  text: "rgba(45, 74, 62, 0.95)",
-  textLight: "rgba(45, 74, 62, 0.7)",
+  headerText: "rgba(45, 74, 62, 0.95)",
+  headerSubText: "rgba(45, 74, 62, 0.7)",
+  text: "rgba(255, 255, 255, 0.95)",
+  textLight: "rgba(255, 255, 255, 0.7)",
   shadow: "rgba(45, 74, 62, 0.35)",
 }
 
@@ -62,6 +68,7 @@ export function Reflection({
   liveReflection,
   onReflectionProcessed,
   showBorder = true,
+  descriptionText,
 }: ReflectionProps) {
   const [reflections, setReflections] = useState<Reflection[]>(initialReflections)
   const processedReflectionIdsRef = useRef<Set<number>>(new Set())
@@ -208,19 +215,27 @@ export function Reflection({
           />
           <span
             className="text-lg font-medium font-sans"
-            style={{ color: colors.text }}
+            style={{ color: colors.headerText }}
           >
             회고
           </span>
         </div>
+        {descriptionText && (
+          <p className="mt-2 text-xs" style={{ color: colors.headerSubText }}>
+            {descriptionText}
+          </p>
+        )}
       </div>
 
       {/* Reflections List */}
       <CustomScrollbar className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0 max-h-full">
         {reflections.length === 0 ? (
           <div
-            className="text-center py-8 text-sm font-sans"
-            style={{ color: colors.textLight }}
+            className="text-center py-8 text-sm font-sans rounded-2xl border border-white/20"
+            style={{
+              color: colors.textLight,
+              backgroundColor: "#1f2937",
+            }}
           >
             아직 회고가 없습니다
           </div>
@@ -228,10 +243,9 @@ export function Reflection({
           reflections.map((reflection) => (
             <div
               key={reflection.id}
-              className="flex gap-3 px-4 py-3 rounded-2xl border border-white/60"
+              className="flex gap-3 px-4 py-3 rounded-2xl border border-white/20"
               style={{
-                backgroundColor: "rgba(197, 212, 192, 0.6)",
-                backdropFilter: "blur(10px)",
+                backgroundColor: "#1f2937",
               }}
             >
               {/* 프로필 사진 */}
@@ -240,13 +254,15 @@ export function Reflection({
                   <img
                     src={reflection.authorAvatar}
                     alt={reflection.authorName}
-                    className="w-12 h-12 rounded-full border-2 border-white/80 shadow-[0_2px_8px_rgba(0,0,0,0.08)] object-cover"
+                    className="w-12 h-12 rounded-full border-2 shadow-[0_2px_8px_rgba(0,0,0,0.08)] object-cover"
+                    style={{ borderColor: "#e8efe5" }}
                   />
                 ) : (
                   <div
-                    className="w-12 h-12 rounded-full border-2 border-white/80 shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center text-white font-semibold text-sm"
+                    className="w-12 h-12 rounded-full border-2 shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center text-white font-semibold text-sm"
                     style={{
-                      background: "#c5d4c0",
+                      background: "#b8c9b4",
+                      borderColor: "#e8efe5",
                     }}
                   >
                     {reflection.authorName.charAt(0)}
@@ -259,7 +275,7 @@ export function Reflection({
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span
                     className="text-xs font-semibold font-sans"
-                    style={{ color: "#111827" }} // 작성자 이름: 검정색
+                    style={{ color: "rgba(255, 255, 255, 0.9)" }}
                   >
                     {reflection.authorName}
                   </span>
@@ -274,8 +290,8 @@ export function Reflection({
                     <span
                       className="text-[10px] font-sans px-1.5 py-0.5 rounded-md"
                       style={{
-                        color: colors.text,
-                        backgroundColor: "rgba(255, 255, 255, 0.7)",
+                        color: "rgba(255, 255, 255, 0.8)",
+                        backgroundColor: "rgba(255, 255, 255, 0.12)",
                       }}
                     >
                       {reflection.sessionId}번째 세션
@@ -297,7 +313,7 @@ export function Reflection({
                 </div>
                 <p
                   className="text-xs font-sans leading-relaxed break-words mb-2"
-                  style={{ color: "#111827" }} // 회고 내용: 검정색
+                  style={{ color: "rgba(255, 255, 255, 0.9)" }}
                 >
                   {reflection.content}
                 </p>

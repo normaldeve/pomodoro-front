@@ -151,6 +151,9 @@ function MemberRoomPageInner() {
   const datePickerRef = useRef<HTMLDivElement>(null)
   const weekViewScrollRef = useRef<HTMLDivElement>(null)
   const hasAutoScrolledToCurrentTimeRef = useRef(false)
+  const draggedEventRef = useRef<Event | null>(null)
+  const isDraggingEventRef = useRef(false)
+  const [dragPreview, setDragPreview] = useState<{ dayIndex: number; startMinutes: number } | null>(null)
   
   // 수정용 state
   const [editEventTitle, setEditEventTitle] = useState("")
@@ -337,6 +340,18 @@ function MemberRoomPageInner() {
   const formatTime = (hour: number, minute: number) => {
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
   }
+
+  const timeStringToMinutes = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(":").map(Number)
+    return hours * 60 + minutes
+  }
+
+  const minutesToTimeString = (totalMinutes: number): string => {
+    const clamped = Math.max(0, Math.min(23 * 60 + 59, totalMinutes))
+    const hour = Math.floor(clamped / 60)
+    const minute = clamped % 60
+    return formatTime(hour, minute)
+  }
   
   const startTime = parseTime(newEventStartTime)
   const endTime = parseTime(newEventEndTime)
@@ -390,7 +405,88 @@ function MemberRoomPageInner() {
   const editEndTime = parseTime(editEventEndTime)
 
   const handleEventClick = (event: Event) => {
+    if (isDraggingEventRef.current) return
     setSelectedEvent(event)
+  }
+
+  const openAddEventDialogForSlot = (date: Date, hour: number) => {
+    const slotStart = formatTime(hour, 0)
+    const slotEnd = hour === 23 ? "23:59" : formatTime(hour + 1, 0)
+
+    setNewEventDate(date)
+    setDialogDisplayMonth(date)
+    setNewEventStartTime(slotStart)
+    setNewEventEndTime(slotEnd)
+    setIsAddEventDialogOpen(true)
+  }
+
+  const handleEventDragStart = (event: Event, e: React.DragEvent<HTMLDivElement>) => {
+    if (!event.id) return
+    draggedEventRef.current = event
+    isDraggingEventRef.current = true
+    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.setData("text/plain", String(event.id))
+  }
+
+  const handleEventDragEnd = () => {
+    draggedEventRef.current = null
+    setDragPreview(null)
+    setTimeout(() => {
+      isDraggingEventRef.current = false
+    }, 0)
+  }
+
+  const updateDragPreviewFromPointer = (dayIndex: number, clientY: number, columnTop: number) => {
+    if (!draggedEventRef.current) return
+    const relativeY = clientY - columnTop
+    const rawMinutes = (relativeY / 80) * 60
+    const snappedStartMinutes = Math.max(0, Math.min(23 * 60 + 50, Math.round(rawMinutes / 10) * 10))
+    setDragPreview({ dayIndex, startMinutes: snappedStartMinutes })
+  }
+
+  const handleEventDropToSlot = async (date: Date, startMinutes: number) => {
+    const draggedEvent = draggedEventRef.current
+    if (!draggedEvent?.id) return
+
+    try {
+      const durationMinutes = Math.max(
+        1,
+        timeStringToMinutes(draggedEvent.endTime) - timeStringToMinutes(draggedEvent.startTime)
+      )
+      const endMinutes = Math.min(23 * 60 + 59, startMinutes + durationMinutes)
+
+      await updatePlan(draggedEvent.id, {
+        title: draggedEvent.title,
+        planDate: format(date, "yyyy-MM-dd"),
+        startTime: minutesToTimeString(startMinutes),
+        endTime: minutesToTimeString(endMinutes),
+        color: mapColorToEventColor(draggedEvent.color),
+      })
+
+      showSuccessNotification("학습 계획 시간이 변경되었습니다.")
+
+      let plans: PlanResponse[]
+      if (isMobile) {
+        plans = await getPlansByDate(format(visibleDays[0], "yyyy-MM-dd"))
+      } else {
+        plans = await getPlansByDateRange(
+          format(visibleDays[0], "yyyy-MM-dd"),
+          format(visibleDays[visibleDays.length - 1], "yyyy-MM-dd")
+        )
+      }
+      const convertedEvents = plans.map(plan => convertPlanToEvent(plan, visibleDays))
+      setEvents(convertedEvents)
+
+      if (selectedEvent?.id === draggedEvent.id) {
+        const updatedEvent = convertedEvents.find(event => event.id === draggedEvent.id)
+        setSelectedEvent(updatedEvent || null)
+      }
+    } catch (error) {
+      console.error("드래그 일정 이동 실패:", error)
+      if (error instanceof ApiError && error.requiresLogin) {
+        return
+      }
+    }
   }
 
   const handleToggleCompleted = async (event: Event) => {
@@ -1073,7 +1169,7 @@ function MemberRoomPageInner() {
     }
   }, [reflectionData, processedReflectionIds])
 
-  const handleReflectionSubmit = (content: string, images: string[], rating: number | null) => {
+  const handleReflectionSubmit = (content: string, images: string[], rating: number | null, isPrivate: boolean) => {
     if (!roomInfo || !currentUser) return
 
     // reflectionEvent에서 받은 sessionId를 우선 사용, 없으면 roomInfo.currentSession 사용
@@ -1087,6 +1183,7 @@ function MemberRoomPageInner() {
       content,
       focusScore: rating,
       imageUrl: mainImageUrl,
+      isPrivate,
     })
 
     // 제출 후 sessionId 초기화
@@ -1439,12 +1536,31 @@ function MemberRoomPageInner() {
                       }}
                     >
                       {/* Time Labels */}
-                      <div className="text-foreground/50 sticky left-0 z-10" style={{ backgroundColor: "rgba(0, 0, 0, 0.05)" }}>
+                      <div className="text-foreground/50 sticky left-0 z-30 relative" style={{ backgroundColor: "rgba(0, 0, 0, 0.05)" }}>
                         {timeSlots.map((time, i) => (
                           <div key={i} className="h-20 pr-2 text-right text-xs">
                             {time === 0 ? "12 AM" : time === 12 ? "12 PM" : time > 12 ? `${time - 12} PM` : `${time} AM`}
                           </div>
                         ))}
+                        {dragPreview && draggedEventRef.current && (
+                          <div
+                            className="absolute right-1 z-40 pointer-events-none"
+                            style={{
+                              top: `${(dragPreview.startMinutes / 60) * 80}px`,
+                              transform: "translateY(-50%)",
+                            }}
+                          >
+                            <div
+                              className="text-[11px] font-semibold px-1.5 py-0.5 rounded"
+                              style={{
+                                color: "white",
+                                backgroundColor: "#2c5f2d",
+                              }}
+                            >
+                              {minutesToTimeString(dragPreview.startMinutes)}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Days Columns */}
@@ -1476,9 +1592,32 @@ function MemberRoomPageInner() {
                                 }
                               : undefined
                           }
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            updateDragPreviewFromPointer(dayIndex, e.clientY, e.currentTarget.getBoundingClientRect().top)
+                          }}
+                          onDragLeave={(e) => {
+                            const nextTarget = e.relatedTarget as Node | null
+                            if (!nextTarget || !e.currentTarget.contains(nextTarget)) {
+                              setDragPreview(null)
+                            }
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            const relativeY = e.clientY - rect.top
+                            const rawMinutes = (relativeY / 80) * 60
+                            const snappedStartMinutes = Math.max(0, Math.min(23 * 60 + 50, Math.round(rawMinutes / 10) * 10))
+                            setDragPreview(null)
+                            void handleEventDropToSlot(visibleDays[dayIndex], snappedStartMinutes)
+                          }}
                         >
                           {timeSlots.map((_, timeIndex) => (
-                            <div key={timeIndex} className="h-20 border-b border-black/5"></div>
+                            <div
+                              key={timeIndex}
+                              className="h-20 border-b border-black/5 cursor-pointer hover:bg-black/5 transition-colors"
+                              onClick={() => openAddEventDialogForSlot(visibleDays[dayIndex], timeIndex)}
+                            ></div>
                           ))}
 
                           {/* Current Time Indicator - 오늘인 경우에만 표시 */}
@@ -1518,6 +1657,20 @@ function MemberRoomPageInner() {
                             </>
                           )}
 
+                          {dragPreview && dragPreview.dayIndex === dayIndex && draggedEventRef.current && (
+                            <>
+                              <div
+                                className="absolute left-0 right-0 z-30 pointer-events-none"
+                                style={{
+                                  top: `${(dragPreview.startMinutes / 60) * 80}px`,
+                                  transform: "translateY(-50%)",
+                                  height: "2px",
+                                  backgroundColor: "#2c5f2d",
+                                }}
+                              />
+                            </>
+                          )}
+
                           {/* Events */}
                           {events
                             .filter((event) => {
@@ -1541,6 +1694,9 @@ function MemberRoomPageInner() {
                                       textDecoration: "line-through",
                                     } : {}),
                                   }}
+                                  draggable={Boolean(event.id)}
+                                  onDragStart={(e) => handleEventDragStart(event, e)}
+                                  onDragEnd={handleEventDragEnd}
                                   onClick={() => handleEventClick(event)}
                                 >
                                   <div className="font-medium flex items-center gap-1">
@@ -1563,14 +1719,12 @@ function MemberRoomPageInner() {
 
           {/* 회고 탭 */}
           {activeTab === "reflection" && (
-            <div className="w-full h-[calc(100vh-280px)] min-h-[500px] flex flex-col gap-3">
-              <div className="px-2 pt-2 text-xs text-black/60">
-                같은 방에서 함께 공부하는 사람들의 회고를 한눈에 볼 수 있어요.
-              </div>
+            <div className="w-full h-[calc(100vh-280px)] min-h-[500px] flex flex-col">
               <div className="flex-1 min-h-0">
                 <Reflection
                   initialReflections={initialReflections}
                   liveReflection={currentLiveReflection}
+                  descriptionText="같은 방에서 함께 공부하는 사람들의 회고를 한눈에 볼 수 있어요."
                   onReflectionProcessed={() => {
                     if (currentLiveReflection) {
                       // 처리 완료된 ID 기록

@@ -81,6 +81,10 @@ export default function CalendarPage() {
   const startTimePickerRef = useRef<HTMLDivElement>(null)
   const endTimePickerRef = useRef<HTMLDivElement>(null)
   const datePickerRef = useRef<HTMLDivElement>(null)
+  const [hoveredSlot, setHoveredSlot] = useState<{ dayIndex: number; timeIndex: number } | null>(null)
+  const [dragPreview, setDragPreview] = useState<{ dayIndex: number; startMinutes: number } | null>(null)
+  const draggedEventRef = useRef<Event | null>(null)
+  const isDraggingEventRef = useRef(false)
   
   // 외부 클릭 시 시간 선택기 닫기
   useEffect(() => {
@@ -110,6 +114,18 @@ export default function CalendarPage() {
   
   const formatTime = (hour: number, minute: number) => {
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
+  }
+
+  const timeStringToMinutes = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(":").map(Number)
+    return hours * 60 + minutes
+  }
+
+  const minutesToTimeString = (totalMinutes: number): string => {
+    const clamped = Math.max(0, Math.min(23 * 60 + 59, totalMinutes))
+    const hour = Math.floor(clamped / 60)
+    const minute = clamped % 60
+    return formatTime(hour, minute)
   }
 
   const to12Hour = (hour24: number): { meridiem: Meridiem; hour12: number } => {
@@ -208,7 +224,90 @@ export default function CalendarPage() {
   }, [])
 
   const handleEventClick = (event: Event) => {
+    if (isDraggingEventRef.current) return
     setSelectedEvent(event)
+  }
+
+  const openAddEventDialogForSlot = (date: Date, hour: number) => {
+    const slotStart = formatTime(hour, 0)
+    const slotEnd = hour === 23 ? "23:59" : formatTime(hour + 1, 0)
+
+    setNewEventDate(date)
+    setDialogDisplayMonth(date)
+    setNewEventStartTime(slotStart)
+    setNewEventEndTime(slotEnd)
+    setIsAddEventDialogOpen(true)
+  }
+
+  const handleEventDragStart = (event: Event, e: React.DragEvent<HTMLDivElement>) => {
+    if (!event.id) return
+    draggedEventRef.current = event
+    isDraggingEventRef.current = true
+    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.setData("text/plain", String(event.id))
+  }
+
+  const handleEventDragEnd = () => {
+    draggedEventRef.current = null
+    setDragPreview(null)
+    setTimeout(() => {
+      isDraggingEventRef.current = false
+    }, 0)
+  }
+
+  const updateDragPreviewFromPointer = (dayIndex: number, clientY: number, columnTop: number) => {
+    if (!draggedEventRef.current) return
+    const relativeY = clientY - columnTop
+    const rawMinutes = (relativeY / 80) * 60
+    const snappedStartMinutes = Math.max(0, Math.min(23 * 60 + 50, Math.round(rawMinutes / 10) * 10))
+    setDragPreview({ dayIndex, startMinutes: snappedStartMinutes })
+  }
+
+  const handleEventDropToSlot = async (date: Date, startMinutes: number) => {
+    const draggedEvent = draggedEventRef.current
+    if (!draggedEvent?.id) return
+
+    try {
+      const durationMinutes = Math.max(
+        1,
+        timeStringToMinutes(draggedEvent.endTime) - timeStringToMinutes(draggedEvent.startTime)
+      )
+      const endMinutes = Math.min(23 * 60 + 59, startMinutes + durationMinutes)
+
+      await updatePlan(draggedEvent.id, {
+        title: draggedEvent.title,
+        planDate: format(date, "yyyy-MM-dd"),
+        startTime: minutesToTimeString(startMinutes),
+        endTime: minutesToTimeString(endMinutes),
+        color: mapColorToEventColor(draggedEvent.color),
+      })
+
+      showSuccessNotification("학습 계획 시간이 변경되었습니다.")
+
+      let plans: PlanResponse[]
+      if (isMobile) {
+        const targetDate = format(visibleDays[0], "yyyy-MM-dd")
+        plans = await getPlansByDate(targetDate)
+      } else {
+        const startDate = format(visibleDays[0], "yyyy-MM-dd")
+        const endDate = format(visibleDays[visibleDays.length - 1], "yyyy-MM-dd")
+        plans = await getPlansByDateRange(startDate, endDate)
+      }
+
+      const convertedEvents = plans.map(plan => convertPlanToEvent(plan, visibleDays))
+      setEvents(convertedEvents)
+
+      if (selectedEvent?.id === draggedEvent.id) {
+        const updatedEvent = convertedEvents.find(event => event.id === draggedEvent.id)
+        setSelectedEvent(updatedEvent || null)
+      }
+    } catch (error) {
+      console.error("드래그 일정 이동 실패:", error)
+      if (error instanceof ApiError && error.requiresLogin) {
+        return
+      }
+      showErrorNotification("일정 이동에 실패했습니다. 다시 시도해주세요.")
+    }
   }
 
   const handleToggleCompleted = async (event: Event) => {
@@ -528,6 +627,13 @@ export default function CalendarPage() {
 
   const timeSlots = Array.from({ length: 24 }, (_, i) => i) // 0시부터 23시까지
   const visibleDaysCount = isMobile ? 1 : 3
+  const amSlotLabelBg = "rgba(255, 255, 255, 0.45)"
+  const pmSlotLabelBg = "rgba(245, 232, 210, 0.45)"
+  const amSlotBg = "rgba(255, 255, 255, 0.38)"
+  const pmSlotBg = "rgba(245, 232, 210, 0.38)"
+  const todayAmSlotBg = "rgba(197, 212, 192, 0.20)"
+  const todayPmSlotBg = "rgba(184, 205, 176, 0.28)"
+  const hoverSlotBg = "rgba(44, 95, 45, 0.20)"
 
   const calculateEventStyle = (startTime: string, endTime: string) => {
     const start = Number.parseInt(startTime.split(":")[0]) + Number.parseInt(startTime.split(":")[1]) / 60
@@ -865,12 +971,35 @@ export default function CalendarPage() {
               }}
             >
               {/* Time Labels */}
-              <div className="text-foreground/50 sticky left-0 z-10" style={{ backgroundColor: "rgba(0, 0, 0, 0.05)" }}>
+              <div className="text-foreground/50 sticky left-0 z-30 relative" style={{ backgroundColor: "rgba(0, 0, 0, 0.05)" }}>
                 {timeSlots.map((time, i) => (
-                  <div key={i} className="h-20 pr-2 text-right text-xs">
+                  <div
+                    key={i}
+                    className="h-20 pr-2 text-right text-xs"
+                    style={{ backgroundColor: i < 12 ? amSlotLabelBg : pmSlotLabelBg }}
+                  >
                     {time === 0 ? "12 AM" : time === 12 ? "12 PM" : time > 12 ? `${time - 12} PM` : `${time} AM`}
                   </div>
                 ))}
+                {dragPreview && draggedEventRef.current && (
+                  <div
+                    className="absolute right-1 z-40 pointer-events-none"
+                    style={{
+                      top: `${(dragPreview.startMinutes / 60) * 80}px`,
+                      transform: "translateY(-50%)",
+                    }}
+                  >
+                    <div
+                      className="text-[11px] font-semibold px-1.5 py-0.5 rounded"
+                      style={{
+                        color: "white",
+                        backgroundColor: "#2c5f2d",
+                      }}
+                    >
+                      {minutesToTimeString(dragPreview.startMinutes)}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Days Columns */}
@@ -906,9 +1035,42 @@ export default function CalendarPage() {
                         }
                       : undefined
                   }
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    updateDragPreviewFromPointer(dayIndex, e.clientY, e.currentTarget.getBoundingClientRect().top)
+                  }}
+                  onDragLeave={(e) => {
+                    const nextTarget = e.relatedTarget as Node | null
+                    if (!nextTarget || !e.currentTarget.contains(nextTarget)) {
+                      setDragPreview(null)
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    const relativeY = e.clientY - rect.top
+                    const rawMinutes = (relativeY / 80) * 60
+                    const snappedStartMinutes = Math.max(0, Math.min(23 * 60 + 50, Math.round(rawMinutes / 10) * 10))
+                    setDragPreview(null)
+                    void handleEventDropToSlot(visibleDays[dayIndex], snappedStartMinutes)
+                  }}
                 >
                   {timeSlots.map((_, timeIndex) => (
-                    <div key={timeIndex} className="h-20 border-b border-black/5"></div>
+                    <div
+                      key={timeIndex}
+                      className="h-20 border-b border-black/5 cursor-pointer transition-colors"
+                      style={{
+                        backgroundColor:
+                          hoveredSlot?.dayIndex === dayIndex && hoveredSlot?.timeIndex === timeIndex
+                            ? hoverSlotBg
+                            : isToday
+                          ? (timeIndex < 12 ? todayAmSlotBg : todayPmSlotBg)
+                          : (timeIndex < 12 ? amSlotBg : pmSlotBg),
+                      }}
+                      onMouseEnter={() => setHoveredSlot({ dayIndex, timeIndex })}
+                      onMouseLeave={() => setHoveredSlot(null)}
+                      onClick={() => openAddEventDialogForSlot(visibleDays[dayIndex], timeIndex)}
+                    ></div>
                   ))}
 
                   {/* Current Time Indicator - 선택된 날짜가 오늘인 경우에만 표시 */}
@@ -948,6 +1110,20 @@ export default function CalendarPage() {
                     </>
                   )}
 
+                  {dragPreview && dragPreview.dayIndex === dayIndex && draggedEventRef.current && (
+                    <>
+                      <div
+                        className="absolute left-0 right-0 z-30 pointer-events-none"
+                        style={{
+                          top: `${(dragPreview.startMinutes / 60) * 80}px`,
+                          transform: "translateY(-50%)",
+                          height: "2px",
+                          backgroundColor: "#2c5f2d",
+                        }}
+                      />
+                    </>
+                  )}
+
                   {/* Events */}
                   {events
                     .filter((event) => {
@@ -972,6 +1148,9 @@ export default function CalendarPage() {
                               textDecoration: "line-through",
                             } : {}),
                           }}
+                          draggable={Boolean(event.id)}
+                          onDragStart={(e) => handleEventDragStart(event, e)}
+                          onDragEnd={handleEventDragEnd}
                           onClick={() => handleEventClick(event)}
                         >
                           <div className="font-medium flex items-center gap-1">
@@ -1087,7 +1266,7 @@ export default function CalendarPage() {
               <div className="h-[10px] w-0"></div>
             </div>
             
-            {/* 캘린더 탭 */}
+            {/* 일정 탭 */}
             <button
               type="button"
               onClick={() => router.push("/calendar")}
@@ -1106,7 +1285,7 @@ export default function CalendarPage() {
               }
             >
               <Calendar className="h-5 w-5" />
-              <span className="text-[10px] font-medium">캘린더</span>
+              <span className="text-[10px] font-medium">일정</span>
             </button>
             
             {/* 홈 버튼 - 녹색 원 안에 (정중앙) */}

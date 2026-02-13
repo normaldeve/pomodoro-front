@@ -69,7 +69,7 @@ export function BottomTabBar({
             <span className="text-[10px] font-medium">홈</span>
           </button>
 
-          {/* 캘린더 */}
+          {/* 일정 */}
           <button
             type="button"
             onClick={handleCalendarClick}
@@ -80,7 +80,7 @@ export function BottomTabBar({
             }`}
           >
             <Calendar className="h-5 w-5" />
-            <span className="text-[10px] font-medium">캘린더</span>
+            <span className="text-[10px] font-medium">일정</span>
           </button>
 
           {/* 방 만들기 - 유튜브 스타일 + 버튼 (정중앙) */}

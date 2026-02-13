@@ -533,7 +533,7 @@ export default function ReflectionPage() {
               <div className="h-[10px] w-0"></div>
             </div>
             
-            {/* 캘린더 탭 */}
+            {/* 일정 탭 */}
             <button
               type="button"
               onClick={() => router.push("/calendar")}
@@ -552,7 +552,7 @@ export default function ReflectionPage() {
               }
             >
               <Calendar className="h-5 w-5" />
-              <span className="text-[10px] font-medium">캘린더</span>
+              <span className="text-[10px] font-medium">일정</span>
             </button>
             
             {/* 홈 버튼 - 녹색 원 안에 (정중앙) */}

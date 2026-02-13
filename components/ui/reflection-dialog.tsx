@@ -4,6 +4,7 @@ import React, { useState, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./dialog"
 import { Button } from "./button"
 import { Label } from "./label"
+import { Switch } from "./switch"
 import { X, Upload, Star } from "lucide-react"
 import { CustomScrollbar } from "./custom-scrollbar"
 import { uploadReflectionImage } from "@/lib/api"
@@ -11,7 +12,7 @@ import { uploadReflectionImage } from "@/lib/api"
 export interface ReflectionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit?: (content: string, images: string[], rating: number | null) => void
+  onSubmit?: (content: string, images: string[], rating: number | null, isPrivate: boolean) => void
   sessionNumber?: number
 }
 
@@ -24,6 +25,7 @@ export function ReflectionDialog({
   const [content, setContent] = useState("")
   const [images, setImages] = useState<string[]>([])
   const [rating, setRating] = useState<number | null>(null)
+  const [isPrivate, setIsPrivate] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,10 +63,11 @@ export function ReflectionDialog({
 
   const handleSubmit = () => {
     if (!content.trim()) return
-    onSubmit?.(content, images, rating)
+    onSubmit?.(content, images, rating, isPrivate)
     setContent("")
     setImages([])
     setRating(null)
+    setIsPrivate(false)
     onOpenChange(false)
   }
 
@@ -72,6 +75,7 @@ export function ReflectionDialog({
     setContent("")
     setImages([])
     setRating(null)
+    setIsPrivate(false)
     onOpenChange(false)
   }
 
@@ -190,6 +194,24 @@ export function ReflectionDialog({
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* 공개/비공개 설정 */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-4 py-3 px-4 rounded-lg border border-black/10 bg-white/50">
+                <Label htmlFor="reflection-private" className="text-sm font-medium cursor-pointer text-black">
+                  비공개 회고
+                </Label>
+                <Switch
+                  id="reflection-private"
+                  checked={isPrivate}
+                  onCheckedChange={setIsPrivate}
+                  className="data-[state=checked]:bg-orange-500"
+                />
+              </div>
+              <p className="text-xs text-gray-600">
+                {isPrivate ? "비공개로 저장되어 본인만 볼 수 있어요." : "공개로 저장되어 함께 공부한 사람들도 볼 수 있어요."}
+              </p>
             </div>
           </div>
         </CustomScrollbar>

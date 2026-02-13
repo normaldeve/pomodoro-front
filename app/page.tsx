@@ -487,11 +487,11 @@ function HomePageInner() {
                     return (
                       <Card
                         key={room.id}
-                        className="group rounded-xl bg-black/5 shadow-xl border border-black/10 hover:-translate-y-0.5 cursor-pointer h-full flex flex-col"
+                        className="group rounded-xl bg-black/5 border border-black/10 hover:-translate-y-0.5 cursor-pointer h-full flex flex-col"
                         style={{
                           opacity: showRooms ? 1 : 0,
                           transform: showRooms ? "translateY(0)" : "translateY(20px)",
-                          transitionProperty: "transform, box-shadow, opacity",
+                          transitionProperty: "transform, opacity",
                           transitionDuration: "0.3s",
                           transitionTimingFunction: "ease-out",
                           transitionDelay: `${700 + index * 100}ms`,

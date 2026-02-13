@@ -865,6 +865,7 @@ export class StudyRoomWebSocket {
     content: string
     focusScore: number | null
     imageUrl: string | null
+    isPrivate: boolean
   }): void {
     if (!this.client || !this.isConnected || !this.roomId) {
       console.warn('WebSocket이 연결되지 않았습니다.')
