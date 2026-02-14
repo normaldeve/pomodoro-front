@@ -41,6 +41,8 @@ const formatTime = (seconds: number): string => {
   return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
 }
 
+type Meridiem = "AM" | "PM"
+
 function HostRoomPageInner() {
   const router = useRouter()
   const pathname = usePathname()
@@ -368,12 +370,44 @@ function HostRoomPageInner() {
     const minute = clamped % 60
     return formatTime(hour, minute)
   }
+
+  const to12Hour = (hour24: number): { meridiem: Meridiem; hour12: number } => {
+    const meridiem: Meridiem = hour24 >= 12 ? "PM" : "AM"
+    const hour12 = ((hour24 + 11) % 12) + 1
+    return { meridiem, hour12 }
+  }
+
+  const to24Hour = (meridiem: Meridiem, hour12: number): number => {
+    const normalizedHour = hour12 % 12
+    return meridiem === "AM" ? normalizedHour : normalizedHour + 12
+  }
+
+  const formatMeridiemLabel = (meridiem: Meridiem) => (meridiem === "AM" ? "오전" : "오후")
+
+  const formatDisplayTime = (hour24: number, minute: number): string => {
+    const { meridiem, hour12 } = to12Hour(hour24)
+    return `${formatMeridiemLabel(meridiem)} ${String(hour12).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
+  }
+
+  const isTimeAfterOrEqual = (
+    hour: number,
+    minute: number,
+    baseHour: number,
+    baseMinute: number
+  ) => {
+    return hour * 60 + minute >= baseHour * 60 + baseMinute
+  }
   
   const startTime = parseTime(newEventStartTime)
   const endTime = parseTime(newEventEndTime)
+  const startTime12 = to12Hour(startTime.hour)
+  const endTime12 = to12Hour(endTime.hour)
   
   const handleStartTimeChange = (hour: number, minute: number) => {
     setNewEventStartTime(formatTime(hour, minute))
+    if (!isTimeAfterOrEqual(endTime.hour, endTime.minute, hour, minute)) {
+      setNewEventEndTime(formatTime(hour, minute))
+    }
   }
   
   const handleEndTimeChange = (hour: number, minute: number) => {
@@ -383,6 +417,9 @@ function HostRoomPageInner() {
   // 수정용 시간 변경 핸들러
   const handleEditStartTimeChange = (hour: number, minute: number) => {
     setEditEventStartTime(formatTime(hour, minute))
+    if (!isTimeAfterOrEqual(editEndTime.hour, editEndTime.minute, hour, minute)) {
+      setEditEventEndTime(formatTime(hour, minute))
+    }
   }
 
   const handleEditEndTimeChange = (hour: number, minute: number) => {
@@ -419,6 +456,14 @@ function HostRoomPageInner() {
   // 수정용 시간 파싱
   const editStartTime = parseTime(editEventStartTime)
   const editEndTime = parseTime(editEventEndTime)
+  const editStartTime12 = to12Hour(editStartTime.hour)
+  const editEndTime12 = to12Hour(editEndTime.hour)
+  const hourOptions12 = Array.from({ length: 12 }, (_, i) => i + 1)
+  const minuteOptions = [0, 10, 20, 30, 40, 50]
+  const isAddEndTimeValid = (hour: number, minute: number) =>
+    isTimeAfterOrEqual(hour, minute, startTime.hour, startTime.minute)
+  const isEditEndTimeValid = (hour: number, minute: number) =>
+    isTimeAfterOrEqual(hour, minute, editStartTime.hour, editStartTime.minute)
 
   const handleEventClick = (event: Event) => {
     if (isDraggingEventRef.current) return
@@ -2267,21 +2312,37 @@ function HostRoomPageInner() {
                     className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white text-left flex items-center justify-between hover:border-primary transition-colors"
                   >
                     <span className="text-sm">
-                      {String(startTime.hour).padStart(2, "0")}:{String(startTime.minute).padStart(2, "0")}
+                      {formatDisplayTime(startTime.hour, startTime.minute)}
                     </span>
                     <Clock className="w-4 h-4 text-gray-400" />
                   </button>
                   {startTimePickerOpen && (
                     <div className="absolute z-50 mt-2 w-full bg-white rounded-lg border border-gray-200 shadow-lg p-4">
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                          {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                          {(["AM", "PM"] as Meridiem[]).map((meridiem) => (
+                            <button
+                              key={meridiem}
+                              type="button"
+                              onClick={() => handleStartTimeChange(to24Hour(meridiem, startTime12.hour12), startTime.minute)}
+                              className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                startTime12.meridiem === meridiem
+                                  ? "bg-primary text-white"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }`}
+                            >
+                              {formatMeridiemLabel(meridiem)}
+                            </button>
+                          ))}
+                        </CustomScrollbar>
+                        <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                          {hourOptions12.map((hour) => (
                             <button
                               key={hour}
                               type="button"
-                              onClick={() => handleStartTimeChange(hour, startTime.minute)}
+                              onClick={() => handleStartTimeChange(to24Hour(startTime12.meridiem, hour), startTime.minute)}
                               className={`px-3 py-2 rounded-md text-sm transition-colors ${
-                                startTime.hour === hour
+                                startTime12.hour12 === hour
                                   ? "bg-primary text-white"
                                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                               }`}
@@ -2291,7 +2352,7 @@ function HostRoomPageInner() {
                           ))}
                         </CustomScrollbar>
                         <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                          {[0, 10, 20, 30, 40, 50].map((minute) => (
+                          {minuteOptions.map((minute) => (
                             <button
                               key={minute}
                               type="button"
@@ -2317,50 +2378,87 @@ function HostRoomPageInner() {
                   <button
                     type="button"
                     onClick={() => {
+                      setNewEventEndTime(formatTime(startTime.hour, startTime.minute))
                       setEndTimePickerOpen(!endTimePickerOpen)
                       setStartTimePickerOpen(false)
                     }}
                     className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white text-left flex items-center justify-between hover:border-primary transition-colors"
                   >
                     <span className="text-sm">
-                      {String(endTime.hour).padStart(2, "0")}:{String(endTime.minute).padStart(2, "0")}
+                      {formatDisplayTime(endTime.hour, endTime.minute)}
                     </span>
                     <Clock className="w-4 h-4 text-gray-400" />
                   </button>
                   {endTimePickerOpen && (
                     <div className="absolute z-50 mt-2 w-full bg-white rounded-lg border border-gray-200 shadow-lg p-4">
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                          {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                            <button
-                              key={hour}
-                              type="button"
-                              onClick={() => handleEndTimeChange(hour, endTime.minute)}
-                              className={`px-3 py-2 rounded-md text-sm transition-colors ${
-                                endTime.hour === hour
-                                  ? "bg-primary text-white"
-                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              }`}
-                            >
-                              {String(hour).padStart(2, "0")}
-                            </button>
-                          ))}
+                          {(["AM", "PM"] as Meridiem[]).map((meridiem) => {
+                            const candidateHour = to24Hour(meridiem, endTime12.hour12)
+                            const disabled = !isAddEndTimeValid(candidateHour, endTime.minute)
+                            return (
+                              <button
+                                key={meridiem}
+                                type="button"
+                                onClick={() => handleEndTimeChange(candidateHour, endTime.minute)}
+                                disabled={disabled}
+                                className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                  disabled
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : endTime12.meridiem === meridiem
+                                      ? "bg-primary text-white"
+                                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                {formatMeridiemLabel(meridiem)}
+                              </button>
+                            )
+                          })}
                         </CustomScrollbar>
                         <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                          {[0, 10, 20, 30, 40, 50].map((minute) => (
-                            <button
-                              key={minute}
-                              type="button"
-                              onClick={() => handleEndTimeChange(endTime.hour, minute)}
-                              className={`px-3 py-2 rounded-md text-sm transition-colors ${
-                                endTime.minute === minute
-                                  ? "bg-primary text-white"
-                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              }`}
-                            >
-                              {String(minute).padStart(2, "0")}
-                            </button>
-                          ))}
+                          {hourOptions12.map((hour) => {
+                            const candidateHour = to24Hour(endTime12.meridiem, hour)
+                            const disabled = !isAddEndTimeValid(candidateHour, endTime.minute)
+                            return (
+                              <button
+                                key={hour}
+                                type="button"
+                                onClick={() => handleEndTimeChange(candidateHour, endTime.minute)}
+                                disabled={disabled}
+                                className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                  disabled
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : endTime12.hour12 === hour
+                                      ? "bg-primary text-white"
+                                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                {String(hour).padStart(2, "0")}
+                              </button>
+                            )
+                          })}
+                        </CustomScrollbar>
+                        <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                          {minuteOptions.map((minute) => {
+                            const disabled = !isAddEndTimeValid(endTime.hour, minute)
+                            return (
+                              <button
+                                key={minute}
+                                type="button"
+                                onClick={() => handleEndTimeChange(endTime.hour, minute)}
+                                disabled={disabled}
+                                className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                  disabled
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : endTime.minute === minute
+                                      ? "bg-primary text-white"
+                                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                {String(minute).padStart(2, "0")}
+                              </button>
+                            )
+                          })}
                         </CustomScrollbar>
                       </div>
                     </div>
@@ -2640,21 +2738,37 @@ function HostRoomPageInner() {
                     className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white text-left flex items-center justify-between hover:border-primary transition-colors"
                   >
                     <span className="text-sm">
-                      {String(editStartTime.hour).padStart(2, "0")}:{String(editStartTime.minute).padStart(2, "0")}
+                      {formatDisplayTime(editStartTime.hour, editStartTime.minute)}
                     </span>
                     <Clock className="w-4 h-4 text-gray-400" />
                   </button>
                   {startTimePickerOpen && (
                     <div className="absolute z-50 mt-2 w-full bg-white rounded-lg border border-gray-200 shadow-lg p-4">
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                          {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                          {(["AM", "PM"] as Meridiem[]).map((meridiem) => (
+                            <button
+                              key={meridiem}
+                              type="button"
+                              onClick={() => handleEditStartTimeChange(to24Hour(meridiem, editStartTime12.hour12), editStartTime.minute)}
+                              className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                editStartTime12.meridiem === meridiem
+                                  ? "bg-primary text-white"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }`}
+                            >
+                              {formatMeridiemLabel(meridiem)}
+                            </button>
+                          ))}
+                        </CustomScrollbar>
+                        <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                          {hourOptions12.map((hour) => (
                             <button
                               key={hour}
                               type="button"
-                              onClick={() => handleEditStartTimeChange(hour, editStartTime.minute)}
+                              onClick={() => handleEditStartTimeChange(to24Hour(editStartTime12.meridiem, hour), editStartTime.minute)}
                               className={`px-3 py-2 rounded-md text-sm transition-colors ${
-                                editStartTime.hour === hour
+                                editStartTime12.hour12 === hour
                                   ? "bg-primary text-white"
                                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                               }`}
@@ -2664,7 +2778,7 @@ function HostRoomPageInner() {
                           ))}
                         </CustomScrollbar>
                         <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                          {[0, 10, 20, 30, 40, 50].map((minute) => (
+                          {minuteOptions.map((minute) => (
                             <button
                               key={minute}
                               type="button"
@@ -2690,50 +2804,87 @@ function HostRoomPageInner() {
                   <button
                     type="button"
                     onClick={() => {
+                      setEditEventEndTime(formatTime(editStartTime.hour, editStartTime.minute))
                       setEndTimePickerOpen(!endTimePickerOpen)
                       setStartTimePickerOpen(false)
                     }}
                     className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white text-left flex items-center justify-between hover:border-primary transition-colors"
                   >
                     <span className="text-sm">
-                      {String(editEndTime.hour).padStart(2, "0")}:{String(editEndTime.minute).padStart(2, "0")}
+                      {formatDisplayTime(editEndTime.hour, editEndTime.minute)}
                     </span>
                     <Clock className="w-4 h-4 text-gray-400" />
                   </button>
                   {endTimePickerOpen && (
                     <div className="absolute z-50 mt-2 w-full bg-white rounded-lg border border-gray-200 shadow-lg p-4">
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                          {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                            <button
-                              key={hour}
-                              type="button"
-                              onClick={() => handleEditEndTimeChange(hour, editEndTime.minute)}
-                              className={`px-3 py-2 rounded-md text-sm transition-colors ${
-                                editEndTime.hour === hour
-                                  ? "bg-primary text-white"
-                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              }`}
-                            >
-                              {String(hour).padStart(2, "0")}
-                            </button>
-                          ))}
+                          {(["AM", "PM"] as Meridiem[]).map((meridiem) => {
+                            const candidateHour = to24Hour(meridiem, editEndTime12.hour12)
+                            const disabled = !isEditEndTimeValid(candidateHour, editEndTime.minute)
+                            return (
+                              <button
+                                key={meridiem}
+                                type="button"
+                                onClick={() => handleEditEndTimeChange(candidateHour, editEndTime.minute)}
+                                disabled={disabled}
+                                className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                  disabled
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : editEndTime12.meridiem === meridiem
+                                      ? "bg-primary text-white"
+                                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                {formatMeridiemLabel(meridiem)}
+                              </button>
+                            )
+                          })}
                         </CustomScrollbar>
                         <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                          {[0, 10, 20, 30, 40, 50].map((minute) => (
-                            <button
-                              key={minute}
-                              type="button"
-                              onClick={() => handleEditEndTimeChange(editEndTime.hour, minute)}
-                              className={`px-3 py-2 rounded-md text-sm transition-colors ${
-                                editEndTime.minute === minute
-                                  ? "bg-primary text-white"
-                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                              }`}
-                            >
-                              {String(minute).padStart(2, "0")}
-                            </button>
-                          ))}
+                          {hourOptions12.map((hour) => {
+                            const candidateHour = to24Hour(editEndTime12.meridiem, hour)
+                            const disabled = !isEditEndTimeValid(candidateHour, editEndTime.minute)
+                            return (
+                              <button
+                                key={hour}
+                                type="button"
+                                onClick={() => handleEditEndTimeChange(candidateHour, editEndTime.minute)}
+                                disabled={disabled}
+                                className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                  disabled
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : editEndTime12.hour12 === hour
+                                      ? "bg-primary text-white"
+                                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                {String(hour).padStart(2, "0")}
+                              </button>
+                            )
+                          })}
+                        </CustomScrollbar>
+                        <CustomScrollbar className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                          {minuteOptions.map((minute) => {
+                            const disabled = !isEditEndTimeValid(editEndTime.hour, minute)
+                            return (
+                              <button
+                                key={minute}
+                                type="button"
+                                onClick={() => handleEditEndTimeChange(editEndTime.hour, minute)}
+                                disabled={disabled}
+                                className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                                  disabled
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : editEndTime.minute === minute
+                                      ? "bg-primary text-white"
+                                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                {String(minute).padStart(2, "0")}
+                              </button>
+                            )
+                          })}
                         </CustomScrollbar>
                       </div>
                     </div>
